@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Cognetra 3.0 — Backend Operations</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   COGNETRA 3.0 — DARK BACKEND OPS DASHBOARD
+   Color Palette:
+     Background:  #050912
+     Card:        #0D1526
+     Card-alt:    #0F1A2E
+     Border:      #1A2847
+     Cyan:        #00D4FF
+     Green:       #00FF9C
+     Amber:       #FFB800
+     Red:         #FF4757
+     Purple:      #8B5CF6
+     Text-muted:  #64748B
+     Text-dim:    #94A3B8
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+  --bg:       #050912;
+  --card:     #0D1526;
+  --card-alt: #0F1A2E;
+  --border:   #1A2847;
+  --cyan:     #00D4FF;
+  --green:    #00FF9C;
+  --amber:    #FFB800;
+  --red:      #FF4757;
+  --purple:   #8B5CF6;
+  --blue:     #3B82F6;
+  --muted:    #64748B;
+  --dim:      #94A3B8;
+  --text:     #E2E8F0;
+  --mono:     'JetBrains Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  overflow-x: hidden;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* ── Topbar ── */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 24px;
+  height: 56px;
+  background: rgba(5,9,18,0.92);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+.brand-icon {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--cyan), var(--blue));
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+.brand-name {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  background: linear-gradient(90deg, var(--cyan), #60A5FA);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.brand-badge {
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--cyan);
+  color: var(--bg);
+  padding: 2px 7px;
+  border-radius: 20px;
+  letter-spacing: 0.5px;
+}
+.topbar-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-left: 2px;
+}
+
+.topbar-spacer { flex: 1; }
+
+.topbar-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--mono);
+  border: 1px solid var(--border);
+  background: var(--card);
+  letter-spacing: 0.3px;
+}
+.pill-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.pill-dot.green { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse-dot 2s infinite; }
+.pill-dot.red   { background: var(--red);   box-shadow: 0 0 6px var(--red); }
+.pill-dot.amber { background: var(--amber); box-shadow: 0 0 6px var(--amber); animation: pulse-dot 1.5s infinite; }
+
+@keyframes pulse-dot {
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+
+#topbar-clock {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--dim);
+  min-width: 70px;
+  text-align: right;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  transition: all .15s ease;
+}
+.btn-cyan { background: var(--cyan); color: var(--bg); }
+.btn-cyan:hover { background: #33DCFF; transform: translateY(-1px); }
+.btn-ghost { background: transparent; color: var(--dim); border: 1px solid var(--border); }
+.btn-ghost:hover { border-color: var(--cyan); color: var(--cyan); }
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 7px;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--dim);
+  border: 1px solid var(--border);
+  transition: all .15s;
+}
+.nav-link:hover { border-color: var(--cyan); color: var(--cyan); background: rgba(0,212,255,0.06); }
+
+/* ── Grid Layout ── */
+.main {
+  display: grid;
+  grid-template-columns: 220px 1fr 320px;
+  grid-template-rows: auto 1fr;
+  gap: 0;
+  height: calc(100vh - 56px);
+}
+
+/* ── Sidebar Left (System Status) ── */
+.sidebar-left {
+  grid-row: 1 / 3;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sidebar-section-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+  padding: 4px 4px 2px;
+  margin-top: 4px;
+}
+
+/* System status cards */
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  transition: border-color .2s;
+}
+.stat-card:hover { border-color: rgba(0,212,255,0.3); }
+.stat-card-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.stat-card-value {
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+}
+.stat-card-sub {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.cv { color: var(--cyan); }
+.gv { color: var(--green); }
+.av { color: var(--amber); }
+.rv { color: var(--red); }
+.pv { color: var(--purple); }
+
+/* Service pills */
+.service-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+.service-name {
+  font-size: 11px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.service-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 20px;
+  font-family: var(--mono);
+  letter-spacing: 0.3px;
+}
+.badge-ok     { background: rgba(0,255,156,0.12); color: var(--green); border: 1px solid rgba(0,255,156,0.25); }
+.badge-err    { background: rgba(255,71,87,0.12);  color: var(--red);   border: 1px solid rgba(255,71,87,0.25); }
+.badge-warn   { background: rgba(255,184,0,0.12);  color: var(--amber); border: 1px solid rgba(255,184,0,0.25); }
+.badge-info   { background: rgba(0,212,255,0.12);  color: var(--cyan);  border: 1px solid rgba(0,212,255,0.25); }
+
+/* Algorithm pipeline display */
+.pipeline-wrap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.pipeline-title {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.pipeline-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(26,40,71,0.6);
+}
+.pipeline-step:last-child { border-bottom: none; }
+.pipeline-num {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--muted);
+  min-width: 16px;
+}
+.pipeline-name {
+  font-size: 11px;
+  font-weight: 500;
+  flex: 1;
+}
+.pipeline-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 5px var(--green);
+}
+
+/* ── Stats Banner ── */
+.stats-banner {
+  grid-column: 2;
+  display: flex;
+  gap: 1px;
+  background: var(--border);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+}
+.stat-box {
+  flex: 1;
+  background: var(--card);
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: relative;
+  overflow: hidden;
+}
+.stat-box::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+.stat-box.c1::after { background: var(--cyan); }
+.stat-box.c2::after { background: var(--green); }
+.stat-box.c3::after { background: var(--purple); }
+.stat-box.c4::after { background: var(--amber); }
+.stat-box.c5::after { background: var(--red); }
+
+.stat-box-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.stat-box-value {
+  font-family: var(--mono);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+}
+.stat-box-hint {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+
+/* ── Centre: Incident Table ── */
+.centre-panel {
+  grid-column: 2;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-header {
+  position: sticky;
+  top: 0;
+  background: var(--card-alt);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  z-index: 10;
+}
+.panel-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--dim);
+  text-transform: uppercase;
+}
+.panel-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: rgba(0,212,255,0.1);
+  color: var(--cyan);
+  border: 1px solid rgba(0,212,255,0.2);
+  padding: 1px 8px;
+  border-radius: 20px;
+}
+.spacer { flex: 1; }
+
+.filter-select {
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--dim);
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  outline: none;
+  cursor: pointer;
+}
+.filter-select:focus { border-color: var(--cyan); }
+
+/* ── Incident Table ── */
+.incident-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.incident-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 8px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  z-index: 5;
+}
+.incident-table tbody tr {
+  border-bottom: 1px solid rgba(26,40,71,0.5);
+  cursor: pointer;
+  transition: background .12s;
+}
+.incident-table tbody tr:hover { background: rgba(0,212,255,0.04); }
+.incident-table tbody tr.selected { background: rgba(0,212,255,0.08); }
+.incident-table tbody td {
+  padding: 9px 14px;
+  vertical-align: middle;
+}
+
+.ev-id {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--cyan);
+  white-space: nowrap;
+}
+.ev-id:hover { text-decoration: underline; }
+
+.type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+.type-accident  { background: rgba(255,71,87,0.15);   color: var(--red);    border: 1px solid rgba(255,71,87,0.3); }
+.type-nearmiss  { background: rgba(255,184,0,0.15);   color: var(--amber);  border: 1px solid rgba(255,184,0,0.3); }
+.type-predictive{ background: rgba(139,92,246,0.15);  color: var(--purple); border: 1px solid rgba(139,92,246,0.3); }
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+.s-pending     { background: rgba(255,184,0,0.12);   color: var(--amber);  border: 1px solid rgba(255,184,0,0.25); }
+.s-verifying   { background: rgba(0,212,255,0.12);   color: var(--cyan);   border: 1px solid rgba(0,212,255,0.25); animation: blink-border .9s infinite; }
+.s-dispatched  { background: rgba(0,255,156,0.12);   color: var(--green);  border: 1px solid rgba(0,255,156,0.25); }
+.s-false       { background: rgba(100,116,139,0.12); color: var(--muted);  border: 1px solid rgba(100,116,139,0.25); }
+.s-received    { background: rgba(59,130,246,0.12);  color: var(--blue);   border: 1px solid rgba(59,130,246,0.25); }
+
+@keyframes blink-border {
+  0%,100% { border-color: rgba(0,212,255,0.25); }
+  50%      { border-color: rgba(0,212,255,0.7); }
+}
+
+.conf-bar-wrap { width: 60px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.conf-bar { height: 100%; border-radius: 2px; transition: width .4s; }
+
+.time-cell {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.cam-cell {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--dim);
+}
+
+/* ── Right Sidebar: Event Detail Pane ── */
+.sidebar-right {
+  grid-row: 1 / 3;
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card-alt);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.detail-header-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--dim);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.detail-ev-id {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--cyan);
+  margin-top: 4px;
+  word-break: break-all;
+}
+
+.detail-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--muted);
+  padding: 32px;
+  text-align: center;
+}
+.detail-placeholder .icon { font-size: 36px; opacity: 0.3; }
+.detail-placeholder p { font-size: 12px; }
+
+.detail-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 14px; }
+
+.detail-section-title {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+/* Video players */
+.clip-row { display: flex; flex-direction: column; gap: 8px; }
+.clip-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.clip-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+}
+.clip-label span { color: var(--dim); }
+.clip-ready-badge { font-size: 9px; padding: 1px 7px; border-radius: 20px; font-family: var(--mono); font-weight: 700; }
+.clip-ready  { background: rgba(0,255,156,0.12); color: var(--green); }
+.clip-waiting{ background: rgba(255,184,0,0.12);  color: var(--amber); }
+.clip-video  { width: 100%; max-height: 130px; object-fit: contain; background: #000; display: block; }
+.clip-no-video {
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--muted);
+  background: rgba(255,255,255,0.01);
+}
+
+/* Verification section */
+.verif-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(26,40,71,0.5);
+  font-size: 11px;
+}
+.verif-row:last-child { border-bottom: none; }
+.verif-label { color: var(--muted); }
+.verif-value { font-family: var(--mono); font-size: 11px; color: var(--dim); }
+
+.rationale-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 10px;
+  font-size: 11px;
+  color: var(--dim);
+  line-height: 1.6;
+  font-style: italic;
+}
+
+/* SSE console */
+.sse-console {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.sse-console-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+}
+.sse-console-header span { font-size: 10px; color: var(--muted); flex:1; }
+.sse-entry {
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 3px 10px;
+  border-bottom: 1px solid rgba(26,40,71,0.3);
+  line-height: 1.5;
+  color: var(--muted);
+}
+.sse-entry.type-inc  { color: var(--cyan); }
+.sse-entry.type-verif{ color: var(--green); }
+.sse-entry.type-disp { color: var(--amber); }
+.sse-entry.type-err  { color: var(--red); }
+#sse-log { max-height: 160px; overflow-y: auto; }
+
+/* ── Scan line decoration ── */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,212,255,0.012) 2px,
+    rgba(0,212,255,0.012) 4px
+  );
+  pointer-events: none;
+  z-index: 999;
+}
+
+/* ── Toast ── */
+.toast-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 9999;
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  min-width: 260px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  animation: toast-in .2s ease;
+}
+@keyframes toast-in { from { transform: translateX(100%); opacity:0; } to { transform:none; opacity:1; } }
+.toast.type-dispatch { border-color: var(--red); }
+.toast.type-verif    { border-color: var(--cyan); }
+.toast.type-info     { border-color: var(--border); }
+
+/* ── Responsive ── */
+@media (max-width: 1100px) {
+  .main { grid-template-columns: 190px 1fr 280px; }
+}
+@media (max-width: 860px) {
+  .main { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr auto; }
+  .sidebar-left, .sidebar-right { grid-row: auto; border: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     TOPBAR
+═══════════════════════════════════════ -->
+<header class="topbar">
+  <div class="topbar-brand">
+    <div class="brand-icon">🧠</div>
+    <span class="brand-name">COGNETRA</span>
+    <span class="brand-badge">3.0</span>
+    <span class="topbar-sub">Backend Operations</span>
+  </div>
+
+  <div class="topbar-spacer"></div>
+
+  <div class="topbar-pills">
+    <div class="pill">
+      <div class="pill-dot" id="srv-dot"></div>
+      <span id="srv-label">Connecting…</span>
+    </div>
+    <div class="pill">
+      <div class="pill-dot" id="gem-dot"></div>
+      <span id="gem-label">Gemini</span>
+    </div>
+    <div class="pill">
+      <div class="pill-dot" id="tg-dot"></div>
+      <span id="tg-label">Telegram</span>
+    </div>
+    <a class="nav-link" href="/monitor" target="_blank">🖥 Monitor</a>
+    <button class="btn btn-cyan" onclick="refreshAll()">⟳ Refresh</button>
+    <span id="topbar-clock">--:--:--</span>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════
+     MAIN GRID
+═══════════════════════════════════════ -->
+<div class="main">
+
+  <!-- ── LEFT SIDEBAR ── -->
+  <aside class="sidebar-left">
+    <div class="sidebar-section-label">System Vitals</div>
+
+    <div class="stat-card">
+      <div class="stat-card-label">Total Incidents</div>
+      <div class="stat-card-value cv" id="sl-total">—</div>
+      <div class="stat-card-sub">all time</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-card-label">Dispatched</div>
+      <div class="stat-card-value gv" id="sl-dispatched">—</div>
+      <div class="stat-card-sub">alerts sent</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-card-label">Verifying</div>
+      <div class="stat-card-value av" id="sl-verifying">—</div>
+      <div class="stat-card-sub">Gemini active</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-card-label">Near-Miss</div>
+      <div class="stat-card-value pv" id="sl-nearmiss">—</div>
+      <div class="stat-card-sub">predictive triggers</div>
+    </div>
+
+    <div class="sidebar-section-label" style="margin-top:4px">Services</div>
+
+    <div class="service-row">
+      <span class="service-name">🗄 Database</span>
+      <span class="service-badge badge-info" id="svc-db">—</span>
+    </div>
+    <div class="service-row">
+      <span class="service-name">🤖 Gemini AI</span>
+      <span class="service-badge badge-warn" id="svc-gem">—</span>
+    </div>
+    <div class="service-row">
+      <span class="service-name">📱 Telegram</span>
+      <span class="service-badge badge-warn" id="svc-tg">—</span>
+    </div>
+    <div class="service-row">
+      <span class="service-name">📡 SSE Stream</span>
+      <span class="service-badge badge-warn" id="svc-sse">—</span>
+    </div>
+
+    <div class="sidebar-section-label" style="margin-top:4px">6-Algo Pipeline</div>
+    <div class="pipeline-wrap">
+      <div class="pipeline-title">Active Algorithms</div>
+      <div class="pipeline-step">
+        <span class="pipeline-num">01</span>
+        <span class="pipeline-name">YOLO-World</span>
+        <span class="pipeline-dot"></span>
+      </div>
+      <div class="pipeline-step">
+        <span class="pipeline-num">02</span>
+        <span class="pipeline-name">ByteTrack</span>
+        <span class="pipeline-dot"></span>
+      </div>
+      <div class="pipeline-step">
+        <span class="pipeline-num">03</span>
+        <span class="pipeline-name">CNN/ResNet</span>
+        <span class="pipeline-dot"></span>
+      </div>
+      <div class="pipeline-step">
+        <span class="pipeline-num">04</span>
+        <span class="pipeline-name">LSTM Kinetics</span>
+        <span class="pipeline-dot"></span>
+      </div>
+      <div class="pipeline-step">
+        <span class="pipeline-num">05</span>
+        <span class="pipeline-name">CLIP (VLM)</span>
+        <span class="pipeline-dot"></span>
+      </div>
+      <div class="pipeline-step">
+        <span class="pipeline-num">06</span>
+        <span class="pipeline-name">Rule Fusion</span>
+        <span class="pipeline-dot"></span>
+      </div>
+    </div>
+
+    <!-- SSE Console -->
+    <div class="sidebar-section-label" style="margin-top:4px">SSE Console</div>
+    <div class="sse-console">
+      <div class="sse-console-header">
+        <div class="pill-dot green" id="sse-status-dot"></div>
+        <span id="sse-status-text">Connecting…</span>
+        <button class="btn btn-ghost" style="padding:2px 8px;font-size:10px" onclick="clearSSELog()">Clear</button>
+      </div>
+      <div id="sse-log"></div>
+    </div>
+  </aside>
+
+  <!-- ── STATS BANNER ── -->
+  <div class="stats-banner">
+    <div class="stat-box c1">
+      <div class="stat-box-label">Total</div>
+      <div class="stat-box-value cv" id="sb-total">0</div>
+      <div class="stat-box-hint">incidents received</div>
+    </div>
+    <div class="stat-box c2">
+      <div class="stat-box-label">Confirmed</div>
+      <div class="stat-box-value gv" id="sb-confirmed">0</div>
+      <div class="stat-box-hint">accidents verified</div>
+    </div>
+    <div class="stat-box c3">
+      <div class="stat-box-label">Near-Miss</div>
+      <div class="stat-box-value pv" id="sb-nearmiss">0</div>
+      <div class="stat-box-hint">predictive events</div>
+    </div>
+    <div class="stat-box c4">
+      <div class="stat-box-label">Dispatched</div>
+      <div class="stat-box-value av" id="sb-dispatched">0</div>
+      <div class="stat-box-hint">alerts sent</div>
+    </div>
+    <div class="stat-box c5">
+      <div class="stat-box-label">False Alarms</div>
+      <div class="stat-box-value rv" id="sb-false">0</div>
+      <div class="stat-box-hint">false positives</div>
+    </div>
+  </div>
+
+  <!-- ── CENTRE PANEL ── -->
+  <section class="centre-panel">
+    <div class="panel-header">
+      <div class="panel-title">🗂 Incident Log</div>
+      <span class="panel-count" id="table-count">0 events</span>
+      <div class="spacer"></div>
+      <select class="filter-select" id="status-filter" onchange="applyFilter()">
+        <option value="">All Statuses</option>
+        <option value="PENDING_CLIP2">Pending Clip2</option>
+        <option value="VERIFYING">Verifying</option>
+        <option value="DISPATCHED">Dispatched</option>
+        <option value="FALSE_POSITIVE">False Alarm</option>
+      </select>
+      <button class="btn btn-ghost" style="margin-left:6px" onclick="refreshAll()">⟳</button>
+    </div>
+
+    <table class="incident-table">
+      <thead>
+        <tr>
+          <th>Event ID</th>
+          <th>Type</th>
+          <th>Camera</th>
+          <th>Confidence</th>
+          <th>Status</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody id="incident-tbody">
+        <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">Loading incidents…</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ── RIGHT DETAIL PANE ── -->
+  <aside class="sidebar-right" id="detail-pane">
+    <div class="detail-header">
+      <div class="detail-header-title">
+        <span>⚡</span> Event Detail
+      </div>
+      <div class="detail-ev-id" id="detail-ev-label">—</div>
+    </div>
+    <div class="detail-placeholder" id="detail-placeholder">
+      <div class="icon">🎯</div>
+      <p>Select an incident from the log to inspect it</p>
+    </div>
+    <div class="detail-body" id="detail-body" style="display:none"></div>
+  </aside>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- ══════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════ -->
+<script>
+const API = '';
+let allIncidents = [];
+let selectedId = null;
+let sseSource = null;
+let sseCount = 0;
+const MAX_SSE_ENTRIES = 80;
+
+// ── Clock ──
+function updateClock() {
+  const now = new Date();
+  document.getElementById('topbar-clock').textContent =
+    now.toLocaleTimeString('en-GB', {hour12: false});
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── Toast ──
+function toast(msg, type='info', duration=4000) {
+  const el = document.createElement('div');
+  el.className = `toast type-${type}`;
+  const icons = {dispatch:'🚨', verif:'✅', info:'ℹ️', err:'❌'};
+  el.innerHTML = `<span>${icons[type]||'•'}</span><span style="flex:1">${msg}</span>`;
+  const container = document.getElementById('toast-container');
+  container.prepend(el);
+  setTimeout(() => { el.style.animation='toast-in .2s ease reverse'; setTimeout(()=>el.remove(), 200); }, duration);
+}
+
+// ── Status helpers ──
+function statusChipHtml(status) {
+  const map = {
+    PENDING_CLIP2:    ['s-pending',   '⏳ PENDING'],
+    RECEIVED_BOTH:    ['s-received',  '📥 RECEIVED'],
+    VERIFYING:        ['s-verifying', '🔄 VERIFYING'],
+    VERIFIED_ACCIDENT:['s-dispatched','🚨 ACCIDENT'],
+    VERIFIED_NEAR_MISS:['s-pending',  '⚠️ NEAR-MISS'],
+    DISPATCHED:       ['s-dispatched','✅ DISPATCHED'],
+    FALSE_POSITIVE:   ['s-false',     '🚫 FALSE'],
+  };
+  const [cls, label] = map[status] || ['s-pending', status];
+  return `<span class="status-chip ${cls}">${label}</span>`;
+}
+
+function typeChipHtml(evt_type) {
+  if (!evt_type) return '<span class="type-chip type-accident">🔴 ACCIDENT</span>';
+  if (evt_type.includes('NEAR_MISS')) return '<span class="type-chip type-nearmiss">⚠️ NEAR-MISS</span>';
+  if (evt_type.includes('PREDICTIVE')) return '<span class="type-chip type-predictive">⚡ PREDICTIVE</span>';
+  return '<span class="type-chip type-accident">🔴 ACCIDENT</span>';
+}
+
+function confBarHtml(conf) {
+  const pct = Math.round((conf || 0) * 100);
+  const color = pct >= 80 ? 'var(--green)' : pct >= 60 ? 'var(--amber)' : 'var(--red)';
+  return `<div style="display:flex;align-items:center;gap:6px">
+    <div class="conf-bar-wrap"><div class="conf-bar" style="width:${pct}%;background:${color}"></div></div>
+    <span style="font-family:var(--mono);font-size:10px;color:var(--dim)">${pct}%</span>
+  </div>`;
+}
+
+// ── Render table row ──
+function renderRow(inc) {
+  const tr = document.createElement('tr');
+  tr.id = `row-${inc.event_id}`;
+  if (inc.event_id === selectedId) tr.classList.add('selected');
+  tr.onclick = () => selectIncident(inc.event_id);
+
+  const shortId = inc.event_id.length > 24 ? inc.event_id.slice(-18) : inc.event_id;
+  const time = inc.created_at ? new Date(inc.created_at).toLocaleTimeString('en-GB', {hour12:false}) : '—';
+
+  tr.innerHTML = `
+    <td><span class="ev-id" title="${inc.event_id}">…${shortId}</span></td>
+    <td>${typeChipHtml(inc.event_type)}</td>
+    <td><span class="cam-cell">${inc.camera_id || 'CAM-001'}</span></td>
+    <td>${confBarHtml(inc.edge_confidence)}</td>
+    <td>${statusChipHtml(inc.status)}</td>
+    <td><span class="time-cell">${time}</span></td>
+  `;
+  return tr;
+}
+
+// ── Load incidents ──
+async function loadIncidents() {
+  try {
+    const r = await fetch(`${API}/api/incidents?limit=100`);
+    if (!r.ok) throw new Error(r.status);
+    const data = await r.json();
+    allIncidents = data.incidents || data || [];
+    renderTable();
+    updateStats();
+  } catch(e) {
+    console.error('Load incidents:', e);
+  }
+}
+
+function renderTable() {
+  const filter = document.getElementById('status-filter').value;
+  const filtered = filter ? allIncidents.filter(i => i.status === filter) : allIncidents;
+
+  const tbody = document.getElementById('incident-tbody');
+  tbody.innerHTML = '';
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">No incidents found</td></tr>';
+  } else {
+    filtered.forEach(inc => tbody.appendChild(renderRow(inc)));
+  }
+  document.getElementById('table-count').textContent = `${filtered.length} events`;
+}
+
+function applyFilter() { renderTable(); }
+
+// ── Stats ──
+function updateStats() {
+  const total = allIncidents.length;
+  const dispatched = allIncidents.filter(i => i.status === 'DISPATCHED').length;
+  const verifying = allIncidents.filter(i => i.status === 'VERIFYING').length;
+  const nearmiss = allIncidents.filter(i =>
+    i.event_type && (i.event_type.includes('NEAR_MISS') || i.event_type.includes('PREDICTIVE'))
+  ).length;
+  const confirmed = allIncidents.filter(i =>
+    ['VERIFIED_ACCIDENT','DISPATCHED'].includes(i.status)
+  ).length;
+  const falsePosCount = allIncidents.filter(i => i.status === 'FALSE_POSITIVE').length;
+
+  setNum('sb-total', total);
+  setNum('sb-confirmed', confirmed);
+  setNum('sb-nearmiss', nearmiss);
+  setNum('sb-dispatched', dispatched);
+  setNum('sb-false', falsePosCount);
+  setNum('sl-total', total);
+  setNum('sl-dispatched', dispatched);
+  setNum('sl-verifying', verifying);
+  setNum('sl-nearmiss', nearmiss);
+}
+
+function setNum(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+// ── Load server status ──
+async function loadStatus() {
+  try {
+    const r = await fetch(`${API}/api/status`);
+    if (!r.ok) throw new Error(r.status);
+    const s = await r.json();
+
+    // Server online
+    document.getElementById('srv-dot').className = 'pill-dot green';
+    document.getElementById('srv-label').textContent = 'Online';
+
+    // Gemini (API returns: gemini_api: "CONFIGURED" or "NOT_CONFIGURED")
+    const gemOk = s.gemini_api === 'CONFIGURED' || s.gemini_configured === true;
+    document.getElementById('gem-dot').className = `pill-dot ${gemOk ? 'green' : 'red'}`;
+    document.getElementById('gem-label').textContent = `Gemini ${gemOk ? '✓' : '✗'}`;
+    document.getElementById('svc-gem').textContent = gemOk ? 'OK' : 'NOT SET';
+    document.getElementById('svc-gem').className = `service-badge ${gemOk ? 'badge-ok' : 'badge-err'}`;
+
+    // Telegram (API returns: telegram: "CONFIGURED" or "NOT_CONFIGURED")
+    const tgOk = s.telegram === 'CONFIGURED' || s.telegram_configured === true;
+    document.getElementById('tg-dot').className = `pill-dot ${tgOk ? 'green' : 'red'}`;
+    document.getElementById('tg-label').textContent = `Telegram ${tgOk ? '✓' : '✗'}`;
+    document.getElementById('svc-tg').textContent = tgOk ? 'OK' : 'NOT SET';
+    document.getElementById('svc-tg').className = `service-badge ${tgOk ? 'badge-ok' : 'badge-err'}`;
+
+    // DB (API returns: database: "OK")
+    const dbOk = s.database === 'OK' || s.database === 'ok';
+    document.getElementById('svc-db').textContent = dbOk ? 'OK' : 'ERR';
+    document.getElementById('svc-db').className = `service-badge ${dbOk ? 'badge-ok' : 'badge-err'}`;
+
+  } catch(e) {
+    document.getElementById('srv-dot').className = 'pill-dot red';
+    document.getElementById('srv-label').textContent = 'Offline';
+  }
+}
+
+// ── Select incident ──
+function selectIncident(evId) {
+  selectedId = evId;
+  document.querySelectorAll('.incident-table tbody tr').forEach(tr => tr.classList.remove('selected'));
+  const row = document.getElementById(`row-${evId}`);
+  if (row) row.classList.add('selected');
+
+  const inc = allIncidents.find(i => i.event_id === evId);
+  if (!inc) return;
+
+  document.getElementById('detail-placeholder').style.display = 'none';
+  document.getElementById('detail-ev-label').textContent = evId;
+  const body = document.getElementById('detail-body');
+  body.style.display = 'flex';
+  body.innerHTML = buildDetailHtml(inc);
+}
+
+function buildDetailHtml(inc) {
+  const clip1Url = `/clips/${inc.event_id}/clip1.mp4`;
+  const clip2Url = `/clips/${inc.event_id}/clip2.mp4`;
+
+  const verif = inc.verification || {};
+  const disp = inc.dispatch || {};
+
+  return `
+    <!-- CLIPS -->
+    <div>
+      <div class="detail-section-title">Evidence Clips</div>
+      <div class="clip-row">
+        <div class="clip-card">
+          <div class="clip-label">
+            <span>🎬 Clip 1 — Impact Window (T-5s…T+5s)</span>
+            <span class="clip-ready-badge clip-ready">READY</span>
+          </div>
+          <video class="clip-video" controls preload="metadata" src="${clip1Url}"
+            onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"></video>
+          <div class="clip-no-video" style="display:none">📭 Clip not available yet</div>
+        </div>
+        <div class="clip-card">
+          <div class="clip-label">
+            <span>🎬 Clip 2 — Aftermath (T+31s…T+41s)</span>
+            <span class="clip-ready-badge ${inc.clip2_path ? 'clip-ready' : 'clip-waiting'}">${inc.clip2_path ? 'READY' : 'WAITING'}</span>
+          </div>
+          <video class="clip-video" controls preload="metadata" src="${clip2Url}"
+            onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"></video>
+          <div class="clip-no-video" style="display:none">⏳ Waiting for aftermath clip…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- METADATA -->
+    <div>
+      <div class="detail-section-title">Event Metadata</div>
+      <div class="verif-row"><span class="verif-label">Type</span><span class="verif-value">${inc.event_type || 'STANDARD'}</span></div>
+      <div class="verif-row"><span class="verif-label">Camera</span><span class="verif-value">${inc.camera_id || '—'}</span></div>
+      <div class="verif-row"><span class="verif-label">Source Video</span><span class="verif-value" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${inc.source_video || ''}">${(inc.source_video || '—').split('/').pop()}</span></div>
+      <div class="verif-row"><span class="verif-label">Edge Confidence</span><span class="verif-value">${((inc.edge_confidence||0)*100).toFixed(1)}%</span></div>
+      <div class="verif-row"><span class="verif-label">Timestamp</span><span class="verif-value">${inc.candidate_timestamp ? inc.candidate_timestamp.toFixed(2)+'s' : '—'}</span></div>
+      <div class="verif-row"><span class="verif-label">Status</span>${statusChipHtml(inc.status)}</div>
+    </div>
+
+    <!-- GEMINI VERIFICATION -->
+    <div>
+      <div class="detail-section-title">Gemini AI Verification</div>
+      ${verif.rationale ? `
+      <div class="verif-row"><span class="verif-label">Result</span><span class="verif-value ${verif.is_accident?'rv':''}">${verif.is_accident ? '🚨 ACCIDENT' : verif.is_near_miss ? '⚠️ NEAR-MISS' : '✅ CLEAR'}</span></div>
+      <div class="verif-row"><span class="verif-label">Severity</span><span class="verif-value">${verif.severity || '—'}</span></div>
+      <div class="verif-row"><span class="verif-label">Collision Type</span><span class="verif-value">${verif.collision_type || '—'}</span></div>
+      <div class="verif-row"><span class="verif-label">AI Confidence</span><span class="verif-value">${((verif.confidence||0)*100).toFixed(1)}%</span></div>
+      <div class="verif-row"><span class="verif-label">Road Condition</span><span class="verif-value">${verif.road_condition || '—'}</span></div>
+      <div class="verif-row"><span class="verif-label">Fail-Open</span><span class="verif-value">${verif.fail_open ? '⚡ YES' : 'No'}</span></div>
+      <div class="verif-row"><span class="verif-label">Time</span><span class="verif-value">${verif.verification_time_ms ? (verif.verification_time_ms/1000).toFixed(2)+'s' : '—'}</span></div>
+      <div style="margin-top:8px">
+        <div class="detail-section-title">AI Rationale</div>
+        <div class="rationale-box">${verif.rationale || 'No rationale available.'}</div>
+      </div>
+      ` : `<div style="color:var(--muted);font-size:11px;padding:8px 0">Verification pending or not available</div>`}
+    </div>
+
+    <!-- DISPATCH -->
+    <div>
+      <div class="detail-section-title">Dispatch Status</div>
+      ${disp.message_id ? `
+      <div class="verif-row"><span class="verif-label">Telegram Msg</span><span class="verif-value gv">#${disp.message_id}</span></div>
+      <div class="verif-row"><span class="verif-label">Sent At</span><span class="verif-value">${disp.created_at ? new Date(disp.created_at).toLocaleTimeString() : '—'}</span></div>
+      <div class="verif-row"><span class="verif-label">Type</span><span class="verif-value">${disp.dispatch_type || '—'}</span></div>
+      ` : `<div style="color:var(--muted);font-size:11px;padding:8px 0">Not yet dispatched</div>`}
+    </div>
+  `;
+}
+
+// ── SSE ──
+function connectSSE() {
+  if (sseSource) sseSource.close();
+
+  document.getElementById('svc-sse').textContent = 'CONNECTING';
+  document.getElementById('svc-sse').className = 'service-badge badge-warn';
+
+  sseSource = new EventSource(`${API}/api/events`);
+
+  sseSource.onopen = () => {
+    document.getElementById('sse-status-dot').className = 'pill-dot green';
+    document.getElementById('sse-status-text').textContent = `Live (${sseCount} events)`;
+    document.getElementById('svc-sse').textContent = 'LIVE';
+    document.getElementById('svc-sse').className = 'service-badge badge-ok';
+  };
+
+  sseSource.onerror = () => {
+    document.getElementById('sse-status-dot').className = 'pill-dot red';
+    document.getElementById('sse-status-text').textContent = 'Reconnecting…';
+    document.getElementById('svc-sse').textContent = 'RECONNECT';
+    document.getElementById('svc-sse').className = 'service-badge badge-err';
+    setTimeout(connectSSE, 3000);
+  };
+
+  sseSource.addEventListener('INCIDENT_UPDATE', e => {
+    const data = JSON.parse(e.data);
+    appendSSEEntry(`INC: ${data.event_id?.slice(-16)} → ${data.status}`, 'type-inc');
+    sseCount++;
+    // Update or insert incident
+    const idx = allIncidents.findIndex(i => i.event_id === data.event_id);
+    if (idx >= 0) Object.assign(allIncidents[idx], data);
+    else allIncidents.unshift(data);
+    renderTable();
+    updateStats();
+    document.getElementById('sse-status-text').textContent = `Live (${sseCount} events)`;
+    if (data.event_id === selectedId) selectIncident(selectedId);
+  });
+
+  sseSource.addEventListener('VERIFICATION_COMPLETED', e => {
+    const data = JSON.parse(e.data);
+    appendSSEEntry(`VERIF: ${data.event_id?.slice(-16)} — ${data.is_accident ? 'ACCIDENT' : data.is_near_miss ? 'NEAR-MISS' : 'CLEAR'}`, 'type-verif');
+    sseCount++;
+    const idx = allIncidents.findIndex(i => i.event_id === data.event_id);
+    if (idx >= 0) { allIncidents[idx].verification = data; allIncidents[idx].status = 'DISPATCHED'; }
+    renderTable(); updateStats();
+    if (data.event_id === selectedId) selectIncident(selectedId);
+  });
+
+  sseSource.addEventListener('DISPATCH_SENT', e => {
+    const data = JSON.parse(e.data);
+    appendSSEEntry(`DISP: ${data.event_id?.slice(-16)} → Telegram #${data.message_id}`, 'type-disp');
+    sseCount++;
+    toast(`🚨 Alert dispatched for ${data.event_id?.slice(-12)}`, 'dispatch');
+    const idx = allIncidents.findIndex(i => i.event_id === data.event_id);
+    if (idx >= 0) { allIncidents[idx].dispatch = data; allIncidents[idx].status = 'DISPATCHED'; }
+    renderTable(); updateStats();
+    if (data.event_id === selectedId) selectIncident(selectedId);
+  });
+
+  sseSource.onmessage = e => {
+    if (e.data && e.data !== ':keepalive') {
+      appendSSEEntry(`MSG: ${e.data.slice(0,60)}`, 'type-inc');
+      sseCount++;
+    }
+  };
+}
+
+function appendSSEEntry(text, typeClass) {
+  const log = document.getElementById('sse-log');
+  const div = document.createElement('div');
+  div.className = `sse-entry ${typeClass}`;
+  const ts = new Date().toLocaleTimeString('en-GB', {hour12:false});
+  div.textContent = `[${ts}] ${text}`;
+  log.prepend(div);
+  // Trim old entries
+  while (log.children.length > MAX_SSE_ENTRIES) log.lastChild.remove();
+}
+
+function clearSSELog() {
+  document.getElementById('sse-log').innerHTML = '';
+}
+
+// ── Refresh all ──
+function refreshAll() {
+  loadStatus();
+  loadIncidents();
+}
+
+// ── Init ──
+loadStatus();
+loadIncidents();
+connectSSE();
+setInterval(loadStatus, 30000);
+setInterval(loadIncidents, 20000);
+</script>
+</body>
+</html>

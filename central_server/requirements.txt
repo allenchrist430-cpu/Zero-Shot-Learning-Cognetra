@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+python-multipart
+sqlalchemy
+aiosqlite
+greenlet
+pydantic
+pydantic-settings
+python-dotenv
+google-genai
+httpx
+python-telegram-bot
+Pillow
+aiofiles
+sse-starlette
+jinja2
+opencv-python-headless

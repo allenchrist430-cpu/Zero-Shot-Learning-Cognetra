@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# Environment Variables & Secrets
+.env
+*.env
+!.env.example
+
+# Central Server Dynamic Telemetry & Sliced Media
+central_server/data/*.db
+central_server/data/*.sqlite3
+central_server/clips/*/
+central_server/clips/*.mp4
+!central_server/data/.gitkeep
+!central_server/clips/.gitkeep
+
+# Edge Client Buffers & Queues
+edge_client/queue/*.json
+edge_client/queue/*.mp4
+edge_client/logs/*.log
+!edge_client/queue/.gitkeep
+!edge_client/logs/.gitkeep
+
+# Logs
+logs/
+*.log
+
+# Operating System & IDE
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo

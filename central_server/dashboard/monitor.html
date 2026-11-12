@@ -1,0 +1,1821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>COGNETRA 3.0 — Accident Monitor</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* ─── RESET & BASE ─── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:        #F0F7FF;
+  --card:      #FFFFFF;
+  --primary:   #1E40AF;
+  --accent:    #0EA5E9;
+  --success:   #059669;
+  --warning:   #D97706;
+  --danger:    #DC2626;
+  --nearmiss:  #7C3AED;
+  --predictive:#EA580C;
+  --gray:      #6B7280;
+  --gray-100:  #F3F4F6;
+  --gray-200:  #E5E7EB;
+  --gray-300:  #D1D5DB;
+  --gray-700:  #374151;
+  --gray-800:  #1F2937;
+  --shadow:    0 4px 24px rgba(14,165,233,0.10);
+  --shadow-lg: 0 8px 40px rgba(14,165,233,0.16);
+  --radius:    14px;
+  --radius-sm: 8px;
+}
+html { font-size: 15px; }
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--gray-800);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+a { color: var(--accent); text-decoration: none; }
+video { background: #0a0a0f; border-radius: var(--radius-sm); }
+
+/* ─── SCROLLBARS ─── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--gray-100); border-radius: 99px; }
+::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* ─── TOPBAR ─── */
+#topbar {
+  background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 40%, #0C4A6E 70%, #083344 100%);
+  background-size: 300% 300%;
+  animation: gradShift 8s ease infinite;
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 72px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 4px 32px rgba(14,165,233,0.25);
+}
+@keyframes gradShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.topbar-left { display: flex; flex-direction: column; gap: 2px; }
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-emoji { font-size: 1.7rem; filter: drop-shadow(0 0 8px rgba(14,165,233,0.8)); }
+.brand-name {
+  font-size: 1.55rem;
+  font-weight: 900;
+  color: #FFFFFF;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 20px rgba(14,165,233,0.5);
+}
+.brand-pill {
+  background: linear-gradient(135deg, var(--accent), #38BDF8);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  padding: 3px 10px;
+  border-radius: 99px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 10px rgba(14,165,233,0.4);
+}
+.brand-subtitle {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.55);
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  padding-left: 2px;
+}
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+/* Connection status */
+.conn-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 99px;
+  padding: 5px 14px;
+}
+.conn-dot {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: #22C55E;
+  box-shadow: 0 0 0 0 rgba(34,197,94,0.6);
+  animation: pulse-green 2s infinite;
+}
+.conn-dot.disconnected {
+  background: var(--danger);
+  box-shadow: 0 0 0 0 rgba(220,38,38,0.6);
+  animation: pulse-red 2s infinite;
+}
+@keyframes pulse-green {
+  0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.6); }
+  70%  { box-shadow: 0 0 0 7px rgba(34,197,94,0); }
+  100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+}
+@keyframes pulse-red {
+  0%   { box-shadow: 0 0 0 0 rgba(220,38,38,0.6); }
+  70%  { box-shadow: 0 0 0 7px rgba(220,38,38,0); }
+  100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+}
+.conn-label {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.75);
+  font-weight: 500;
+}
+.server-url {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  color: rgba(255,255,255,0.45);
+}
+/* Telegram badge */
+.tg-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(37,211,102,0.15);
+  border: 1px solid rgba(37,211,102,0.3);
+  border-radius: 99px;
+  padding: 5px 12px;
+  font-size: 0.7rem;
+  color: #4ADE80;
+  font-weight: 600;
+}
+.tg-badge svg { width: 14px; height: 14px; fill: #4ADE80; }
+/* Clock */
+#clock {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.8);
+  font-weight: 600;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  min-width: 120px;
+  text-align: center;
+}
+/* Refresh button */
+.btn-refresh {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, var(--accent), #0284C7);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 7px 16px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.03em;
+  box-shadow: 0 2px 10px rgba(14,165,233,0.35);
+}
+.btn-refresh:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(14,165,233,0.5); }
+.btn-refresh:active { transform: translateY(0); }
+.btn-refresh svg { width: 14px; height: 14px; fill: #fff; }
+
+/* ─── HERO STATS ─── */
+#hero-stats {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  padding: 20px 24px 0;
+}
+.stat-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px 20px 16px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.stat-card.blue::before   { background: linear-gradient(90deg, var(--primary), var(--accent)); }
+.stat-card.red::before    { background: linear-gradient(90deg, #991B1B, var(--danger)); }
+.stat-card.purple::before { background: linear-gradient(90deg, #5B21B6, var(--nearmiss)); }
+.stat-card.green::before  { background: linear-gradient(90deg, #065F46, var(--success)); }
+.stat-card.gray::before   { background: linear-gradient(90deg, #374151, var(--gray)); }
+.stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.stat-icon {
+  font-size: 1.4rem;
+  margin-bottom: 6px;
+  display: block;
+}
+.stat-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gray);
+  margin-bottom: 4px;
+}
+.stat-value {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--gray-800);
+}
+.stat-card.blue   .stat-value { color: var(--primary); }
+.stat-card.red    .stat-value { color: var(--danger); }
+.stat-card.purple .stat-value { color: var(--nearmiss); }
+.stat-card.green  .stat-value { color: var(--success); }
+.stat-card.gray   .stat-value { color: var(--gray); }
+.stat-delta {
+  font-size: 0.65rem;
+  color: var(--gray);
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+/* ─── MAIN LAYOUT ─── */
+#main-layout {
+  display: flex;
+  gap: 18px;
+  padding: 18px 24px 24px;
+  align-items: flex-start;
+}
+#left-panel {
+  flex: 70;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+#right-panel {
+  flex: 30;
+  min-width: 300px;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: sticky;
+  top: 90px;
+  max-height: calc(100vh - 100px);
+  overflow: hidden;
+}
+
+/* ─── PANEL HEADER ─── */
+.panel-header {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px 20px 14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.panel-title-group {}
+.panel-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+.panel-title span { font-size: 1.1rem; }
+.panel-subtitle {
+  font-size: 0.72rem;
+  color: var(--gray);
+  font-weight: 400;
+}
+.panel-badges {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+.badge-blue   { background: #DBEAFE; color: var(--primary); }
+.badge-red    { background: #FEE2E2; color: var(--danger); }
+.badge-gray   { background: var(--gray-100); color: var(--gray); }
+.badge-green  { background: #DCFCE7; color: var(--success); }
+.badge-purple { background: #EDE9FE; color: var(--nearmiss); }
+.badge-amber  { background: #FEF3C7; color: var(--warning); }
+.badge-orange { background: #FFF7ED; color: var(--predictive); }
+
+/* ─── STATUS CHIPS ─── */
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  border-radius: 99px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.chip-pending    { background: #FEF3C7; color: #92400E; }
+.chip-processing { background: #DBEAFE; color: var(--primary); }
+.chip-verifying  {
+  background: #DBEAFE; color: var(--accent);
+  animation: chipPulse 1.5s ease infinite;
+}
+@keyframes chipPulse {
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0.6; }
+}
+.chip-accident  { background: #FEE2E2; color: var(--danger); }
+.chip-nearmiss  { background: #EDE9FE; color: var(--nearmiss); }
+.chip-dispatch  { background: #DCFCE7; color: var(--success); }
+.chip-false     { background: var(--gray-100); color: var(--gray); }
+
+/* ─── INCIDENT CARDS ─── */
+#incident-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+/* Card enter animation */
+.card-enter {
+  animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-18px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.incident-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  border: 1px solid rgba(14,165,233,0.08);
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.incident-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-1px);
+}
+/* Card Header */
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--gray-100);
+  flex-wrap: wrap;
+}
+.evt-id {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--primary);
+  background: #DBEAFE;
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+.cam-label {
+  font-size: 0.72rem;
+  color: var(--gray);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.cam-label::before {
+  content: '📷';
+  font-size: 0.75rem;
+}
+.ts-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--gray);
+  margin-left: auto;
+}
+/* Dual video row */
+.video-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 14px 18px;
+  background: #FAFCFF;
+}
+.video-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.video-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.video-title {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--gray-700);
+  letter-spacing: 0.03em;
+  line-height: 1.3;
+}
+.video-ready   { background: #DCFCE7; color: var(--success); padding: 2px 8px; border-radius: 99px; font-size: 0.6rem; font-weight: 700; }
+.video-waiting { background: #FEF3C7; color: var(--warning); padding: 2px 8px; border-radius: 99px; font-size: 0.6rem; font-weight: 700; }
+.video-player-wrap {
+  position: relative;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: #0F172A;
+  aspect-ratio: 16/9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.video-player-wrap video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+/* Spinner overlay */
+.video-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255,255,255,0.5);
+  font-size: 0.65rem;
+  font-weight: 500;
+}
+.spinner-ring {
+  width: 32px; height: 32px;
+  border: 3px solid rgba(14,165,233,0.2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── AI ASSESSMENT SECTION ─── */
+.ai-section {
+  border-top: 1px solid var(--gray-100);
+}
+.ai-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+.ai-toggle:hover { background: #F8FAFF; }
+.ai-toggle-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--gray-700);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ai-toggle-title .ai-icon { font-size: 0.85rem; }
+.ai-arrow {
+  width: 16px; height: 16px;
+  color: var(--gray);
+  transition: transform 0.25s;
+}
+.ai-arrow.open { transform: rotate(180deg); }
+.ai-body {
+  padding: 0 18px 14px;
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+}
+.ai-body.open { display: flex; }
+
+/* Algorithm pills row */
+.algo-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.algo-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: var(--gray-100);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  min-width: 80px;
+  flex: 1;
+  border: 1px solid var(--gray-200);
+  transition: border-color 0.2s;
+}
+.algo-pill:hover { border-color: var(--accent); }
+.algo-pill-icon { font-size: 1rem; }
+.algo-pill-name { font-size: 0.6rem; font-weight: 700; color: var(--gray-700); letter-spacing: 0.03em; text-align: center; }
+.algo-pill-val  {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-align: center;
+}
+.algo-pill .dot-green { color: var(--success); }
+.algo-pill .dot-gray  { color: var(--gray); }
+
+/* Confidence bar */
+.conf-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.conf-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--gray-700);
+}
+.conf-pct {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+.conf-track {
+  height: 8px;
+  background: var(--gray-200);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.conf-fill {
+  height: 100%;
+  border-radius: 99px;
+  width: 0%;
+  transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+}
+
+/* Rationale */
+.rationale-box {
+  background: #F0F7FF;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 8px 12px;
+  font-size: 0.7rem;
+  color: var(--gray-700);
+  line-height: 1.6;
+  font-style: italic;
+}
+.rationale-box:empty { display: none; }
+
+/* ─── DISPATCH FOOTER ─── */
+.dispatch-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  border-top: 1px solid var(--gray-100);
+  background: #FAFCFF;
+  flex-wrap: wrap;
+}
+.dispatch-type {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--gray-100);
+  color: var(--gray-700);
+  border: 1px solid var(--gray-200);
+}
+.tg-sent    { color: var(--success); font-size: 0.65rem; font-weight: 600; }
+.tg-pending { color: var(--warning); font-size: 0.65rem; font-weight: 600; }
+.dispatch-meta {
+  font-size: 0.65rem;
+  color: var(--gray);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+/* ─── EMPTY STATE ─── */
+#empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 60px 20px;
+  text-align: center;
+}
+.empty-dots {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.empty-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: emptyPulse 1.4s ease-in-out infinite;
+}
+.empty-dot:nth-child(2) { animation-delay: 0.2s; }
+.empty-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes emptyPulse {
+  0%,100% { transform: scale(0.6); opacity: 0.3; }
+  50%      { transform: scale(1); opacity: 1; }
+}
+.empty-label {
+  font-size: 0.9rem;
+  color: var(--gray);
+  font-weight: 500;
+  max-width: 320px;
+  line-height: 1.6;
+}
+.empty-label strong { color: var(--primary); }
+
+/* ─── RIGHT PANEL: EVENT STREAM ─── */
+.sidebar-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.sidebar-header {
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--gray-100);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sidebar-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sse-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--success);
+}
+.sse-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+  animation: pulse-green 2s infinite;
+}
+.sse-dot.off { background: var(--danger); animation: pulse-red 2s infinite; }
+
+/* Event log */
+#event-log {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 340px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.evt-entry {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.65rem;
+  line-height: 1.4;
+  animation: fadeIn 0.3s ease;
+  background: var(--gray-100);
+  border-left: 3px solid var(--gray-300);
+}
+@keyframes fadeIn { from { opacity:0; transform:translateX(-6px); } to { opacity:1; transform:translateX(0); } }
+.evt-entry.type-incident   { background: #EFF6FF; border-left-color: var(--accent); }
+.evt-entry.type-verified   { background: #FEF2F2; border-left-color: var(--danger); }
+.evt-entry.type-dispatch   { background: #F0FDF4; border-left-color: var(--success); }
+.evt-entry.type-nearmiss   { background: #F5F3FF; border-left-color: var(--nearmiss); }
+.evt-entry.type-false      { background: var(--gray-100); border-left-color: var(--gray); }
+.evt-time {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--gray);
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: 0.6rem;
+  margin-top: 1px;
+}
+.evt-msg { color: var(--gray-700); font-weight: 500; }
+.evt-msg strong { color: var(--gray-800); }
+
+/* Quick stats */
+.qs-section {
+  padding: 14px 16px;
+  border-top: 1px solid var(--gray-100);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.qs-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--gray-700);
+  margin-bottom: 2px;
+}
+.qs-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.7rem;
+  color: var(--gray);
+}
+.qs-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 0.75rem;
+}
+
+/* CSS-only pie chart */
+.pie-chart-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-top: 4px;
+}
+.pie-chart {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--danger)    0%   40%,
+    var(--nearmiss)  40%  55%,
+    var(--success)   55%  75%,
+    var(--gray)      75%  100%
+  );
+  position: relative;
+  flex-shrink: 0;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+.pie-chart::after {
+  content: '';
+  position: absolute;
+  inset: 20px;
+  border-radius: 50%;
+  background: var(--card);
+}
+.pie-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.leg-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.62rem;
+  color: var(--gray-700);
+  font-weight: 500;
+}
+.leg-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ─── NOTIFICATION TOAST ─── */
+#toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 999;
+  pointer-events: none;
+}
+.toast {
+  background: var(--card);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  padding: 12px 18px;
+  border-left: 4px solid var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  animation: toastIn 0.3s ease forwards;
+  pointer-events: all;
+  min-width: 260px;
+  max-width: 320px;
+}
+@keyframes toastIn {
+  from { opacity:0; transform:translateX(30px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+.toast-icon { font-size: 1rem; flex-shrink: 0; }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 1100px) {
+  #hero-stats { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 900px) {
+  #main-layout { flex-direction: column; }
+  #right-panel { max-width: 100%; position: static; max-height: none; }
+}
+@media (max-width: 700px) {
+  #hero-stats { grid-template-columns: repeat(2, 1fr); }
+  .video-row  { grid-template-columns: 1fr; }
+  #topbar     { flex-direction: column; align-items: flex-start; padding: 12px 16px; }
+}
+@media (max-width: 480px) {
+  #hero-stats { grid-template-columns: 1fr; }
+  #main-layout, #hero-stats { padding-left: 12px; padding-right: 12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ─── TOPBAR ─── -->
+<header id="topbar">
+  <div class="topbar-left">
+    <div class="topbar-brand">
+      <span class="brand-emoji">🧠</span>
+      <span class="brand-name">COGNETRA</span>
+      <span class="brand-pill">MONITOR</span>
+    </div>
+    <div class="brand-subtitle">Autonomous Traffic Accident Verification &amp; Emergency Dispatch</div>
+  </div>
+  <div class="topbar-right">
+    <div class="conn-status">
+      <div class="conn-dot" id="conn-dot"></div>
+      <div>
+        <div class="conn-label" id="conn-label">Connected</div>
+        <div class="server-url" id="server-url">localhost:5000</div>
+      </div>
+    </div>
+    <div class="tg-badge">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.17 14.238l-2.95-.924c-.64-.203-.658-.64.135-.954l11.57-4.461c.537-.194 1.006.131.97.322z"/></svg>
+      Telegram Active
+    </div>
+    <div id="clock">--:--:-- UTC</div>
+    <button class="btn-refresh" onclick="refreshAll()">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+      Refresh
+    </button>
+    <button class="btn-refresh" style="background: linear-gradient(135deg, #DC2626, #991B1B); border-color:#DC2626;" onclick="resetAllZero()">
+      <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:#fff;"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+      Reset to 0
+    </button>
+  </div>
+</header>
+
+<!-- ─── HERO STATS ─── -->
+<section id="hero-stats">
+  <div class="stat-card blue">
+    <span class="stat-icon">📊</span>
+    <div class="stat-label">Total Incidents</div>
+    <div class="stat-value" id="stat-total">0</div>
+    <div class="stat-delta">All events received</div>
+  </div>
+  <div class="stat-card red">
+    <span class="stat-icon">🚨</span>
+    <div class="stat-label">Confirmed Accidents</div>
+    <div class="stat-value" id="stat-accidents">0</div>
+    <div class="stat-delta">AI-verified collisions</div>
+  </div>
+  <div class="stat-card purple">
+    <span class="stat-icon">⚠️</span>
+    <div class="stat-label">Near-Miss / Predictive</div>
+    <div class="stat-value" id="stat-nearmiss">0</div>
+    <div class="stat-delta">Near-miss + TTC alerts</div>
+  </div>
+  <div class="stat-card green">
+    <span class="stat-icon">🚁</span>
+    <div class="stat-label">Dispatched</div>
+    <div class="stat-value" id="stat-dispatched">0</div>
+    <div class="stat-delta">Emergency units sent</div>
+  </div>
+  <div class="stat-card gray">
+    <span class="stat-icon">🚫</span>
+    <div class="stat-label">False Alarms</div>
+    <div class="stat-value" id="stat-false">0</div>
+    <div class="stat-delta">Filtered by AI</div>
+  </div>
+</section>
+
+<!-- ─── MAIN LAYOUT ─── -->
+<div id="main-layout">
+
+  <!-- LEFT PANEL -->
+  <div id="left-panel">
+    <!-- Panel header -->
+    <div class="panel-header">
+      <div class="panel-title-group">
+        <div class="panel-title">
+          <span>📡</span> Incoming Incident Feed
+        </div>
+        <div class="panel-subtitle">Showing live accident clips and assessments received from Edge Cameras</div>
+      </div>
+      <div class="panel-badges">
+        <span class="badge badge-blue">🎞 <span id="badge-total">0</span> Incidents</span>
+        <span class="badge badge-red">✅ <span id="badge-confirmed">0</span> Confirmed</span>
+        <span class="badge badge-gray">❌ <span id="badge-false">0</span> False Alarms</span>
+      </div>
+    </div>
+
+    <!-- Feed -->
+    <div id="incident-feed">
+      <!-- Empty state -->
+      <div id="empty-state">
+        <div class="empty-dots">
+          <div class="empty-dot"></div>
+          <div class="empty-dot"></div>
+          <div class="empty-dot"></div>
+        </div>
+        <div class="empty-label">
+          <strong>Waiting for incidents</strong><br/>
+          from edge camera nodes...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div id="right-panel">
+
+    <!-- SSE Event Stream -->
+    <div class="sidebar-card">
+      <div class="sidebar-header">
+        <div class="sidebar-title">⚡ Live Event Stream</div>
+        <div class="sse-status">
+          <div class="sse-dot" id="sse-dot"></div>
+          <span id="sse-label">Connecting…</span>
+        </div>
+      </div>
+      <div id="event-log">
+        <!-- entries injected here -->
+      </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="sidebar-card">
+      <div class="sidebar-header">
+        <div class="sidebar-title">📈 Quick Stats</div>
+      </div>
+      <div class="qs-section">
+        <div class="qs-title">Session Summary</div>
+        <div class="qs-row">
+          <span>Events today</span>
+          <span class="qs-val" id="qs-today">0</span>
+        </div>
+        <div class="qs-row">
+          <span>Avg confidence</span>
+          <span class="qs-val" id="qs-conf">—</span>
+        </div>
+        <div class="qs-row">
+          <span>SSE messages</span>
+          <span class="qs-val" id="qs-sse-cnt">0</span>
+        </div>
+        <div class="qs-row">
+          <span>Uptime</span>
+          <span class="qs-val" id="qs-uptime">00:00:00</span>
+        </div>
+      </div>
+      <div class="qs-section" style="border-top:1px solid var(--gray-200);">
+        <div class="qs-title">Trigger Breakdown</div>
+        <div class="pie-chart-wrap">
+          <div class="pie-chart" id="pie-chart"></div>
+          <div class="pie-legend">
+            <div class="leg-item"><div class="leg-dot" style="background:var(--danger)"></div>Accident</div>
+            <div class="leg-item"><div class="leg-dot" style="background:var(--nearmiss)"></div>Near-Miss</div>
+            <div class="leg-item"><div class="leg-dot" style="background:var(--success)"></div>Dispatched</div>
+            <div class="leg-item"><div class="leg-dot" style="background:var(--gray)"></div>False Alarm</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ─── TOAST ─── -->
+<div id="toast-container"></div>
+
+<!-- ─── JAVASCRIPT ─── -->
+<script>
+/* ═══════════════════════════════════════════════
+   COGNETRA 3.0 — Monitor Dashboard JavaScript
+   ═══════════════════════════════════════════════ */
+
+const SSE_URL  = '/api/events';
+const API_BASE = '';
+
+// Runtime state
+let incidents     = [];
+let sseSource     = null;
+let sseMsgCount   = 0;
+let startTime     = Date.now();
+let confidences   = [];
+let pieData       = { accident:0, nearmiss:0, dispatched:0, false_alarm:0 };
+let reconnectTimer = null;
+let cardIdSet     = new Set();
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/* ─── STATUS CHIP MAP ─── */
+const STATUS_MAP = {
+  PENDING_CLIP2:       { cls: 'chip-pending',    dot: '🟡', label: 'Pending Clip 2' },
+  RECEIVED_BOTH:       { cls: 'chip-processing', dot: '🔵', label: 'Processing'      },
+  VERIFYING:           { cls: 'chip-verifying',  dot: '🔵', label: 'Verifying AI'    },
+  VERIFIED_ACCIDENT:   { cls: 'chip-accident',   dot: '🔴', label: 'Confirmed Accident' },
+  VERIFIED_NEAR_MISS:  { cls: 'chip-nearmiss',   dot: '🟣', label: 'Near-Miss'       },
+  DISPATCHED:          { cls: 'chip-dispatch',   dot: '🟢', label: 'Dispatched'      },
+  FALSE_POSITIVE:      { cls: 'chip-false',      dot: '⚪', label: 'False Alarm'     },
+};
+
+function statusChip(status) {
+  const s = STATUS_MAP[status] || { cls: 'chip-processing', dot: '🔵', label: status };
+  return `<span class="status-chip ${s.cls}">${s.dot} ${s.label}</span>`;
+}
+
+/* ─── CLOCK ─── */
+function updateClock() {
+  const now = new Date();
+  const hh  = String(now.getUTCHours()).padStart(2,'0');
+  const mm  = String(now.getUTCMinutes()).padStart(2,'0');
+  const ss  = String(now.getUTCSeconds()).padStart(2,'0');
+  const yyyy = now.getUTCFullYear();
+  const mo  = String(now.getUTCMonth()+1).padStart(2,'0');
+  const dd  = String(now.getUTCDate()).padStart(2,'0');
+  document.getElementById('clock').textContent = `${dd}/${mo}/${yyyy} ${hh}:${mm}:${ss} UTC`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+/* ─── UPTIME ─── */
+setInterval(() => {
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  const h = String(Math.floor(elapsed / 3600)).padStart(2,'0');
+  const m = String(Math.floor((elapsed % 3600) / 60)).padStart(2,'0');
+  const s = String(elapsed % 60).padStart(2,'0');
+  const el = document.getElementById('qs-uptime');
+  if (el) el.textContent = `${h}:${m}:${s}`;
+}, 1000);
+
+/* ─── ANIMATE BAR ─── */
+function animateBar(elementId, targetPct, color) {
+  const fill = document.getElementById(elementId);
+  if (!fill) return;
+  const clamp = Math.min(100, Math.max(0, targetPct));
+  fill.style.background = color || 'linear-gradient(90deg, var(--primary), var(--accent))';
+  setTimeout(() => { fill.style.width = clamp + '%'; }, 50);
+  const pctEl = document.getElementById(elementId + '-pct');
+  if (pctEl) pctEl.textContent = clamp.toFixed(1) + '%';
+}
+
+/* ─── RENDER CARD ─── */
+function renderCard(incident) {
+  const id  = incident.event_id || incident.id || 'UNK';
+  const cam = incident.camera_id || incident.camera || 'CAM-?';
+  const ts  = incident.timestamp
+    ? new Date(incident.timestamp).toLocaleTimeString('en-GB', {hour12:false})
+    : '--:--:--';
+  const st  = incident.status || 'PENDING_CLIP2';
+
+  const hasClip1 = Boolean(incident.clip1_ready || incident.clip1_path || incident.clip1_received);
+  const hasClip2 = Boolean(incident.clip2_ready || incident.clip2_path || incident.clip2_received);
+
+  const clip1Src = `${API_BASE}/clips/${id}/clip1.mp4`;
+  const clip2Src = `${API_BASE}/clips/${id}/clip2.mp4`;
+
+  const verif = incident.verification || {};
+  const disp  = incident.dispatch     || {};
+
+  const dispType = disp.dispatch_type || incident.dispatch_type || null;
+  const tgSent   = disp.telegram_sent != null ? disp.telegram_sent : (incident.telegram_sent != null ? incident.telegram_sent : null);
+  const speed    = disp.collision_speed || incident.collision_speed || null;
+  const vehType  = disp.vehicle_type    || incident.vehicle_type    || null;
+
+  const edgeConf  = verif.edge_confidence   != null ? (verif.edge_confidence * 100).toFixed(1) : null;
+  const geminiConf= verif.gemini_confidence != null ? (verif.gemini_confidence * 100).toFixed(1)
+                  : verif.confidence        != null ? (verif.confidence * 100).toFixed(1) : null;
+
+  const isTTC   = incident.trigger_type === 'PREDICTIVE_TRIGGER';
+  const ttcVal  = isTTC ? '&lt; 1.5s' : 'N/A';
+  const ttcCls  = isTTC ? 'dot-green' : 'dot-gray';
+
+  let decisionVal = '—';
+  if      (st === 'VERIFIED_ACCIDENT')  decisionVal = 'ACCIDENT';
+  else if (st === 'VERIFIED_NEAR_MISS') decisionVal = 'NEAR-MISS';
+  else if (st === 'DISPATCHED')         decisionVal = 'DISPATCHED';
+  else if (st === 'FALSE_POSITIVE')     decisionVal = 'FALSE';
+  else if (st === 'VERIFYING')          decisionVal = 'FUSING…';
+  else                                   decisionVal = 'PENDING';
+
+  const rationale = verif.rationale || verif.gemini_response || '';
+
+  const vehicles = verif.vehicles_involved || incident.vehicles_involved || vehType || 'Vehicles Pending Verification';
+  const isHeavy = Boolean(verif.heavy_vehicle_involved || incident.heavy_vehicle_involved || (vehicles && /truck|trailer|semi|bus|lorry/i.test(vehicles)));
+  const severity = verif.severity || (isHeavy ? 'CRITICAL' : 'UNKNOWN');
+  const collisionType = verif.collision_type || '—';
+  const entrapmentRisk = Boolean(verif.entrapment_risk);
+
+  const heavyBannerHtml = isHeavy ? `
+    <div class="heavy-vehicle-pill" id="heavy-banner-${id}" style="background:linear-gradient(135deg, #DC2626, #991B1B);color:#fff;font-weight:700;font-size:0.75rem;padding:6px 14px;border-radius:6px;display:flex;align-items:center;justify-content:space-between;margin:8px 0 10px;box-shadow:0 2px 10px rgba(220,38,38,0.35);">
+      <span>🚛 HEAVY COMMERCIAL VEHICLE INVOLVED — HIGH MOMENTUM HAZARD</span>
+      <span style="background:rgba(255,255,255,0.25);padding:2px 8px;border-radius:4px;font-size:0.7rem;">p = m·v</span>
+    </div>` : '';
+
+  const vehicleBoxHtml = `
+    <div id="veh-box-${id}" style="margin:10px 0;background:#F8FAFC;border:1px solid #E2E8F0;border-left:4px solid ${isHeavy ? '#DC2626' : '#0EA5E9'};border-radius:6px;padding:8px 12px;font-size:0.8rem;color:#1E293B;">
+      <div><strong>🚗 Vehicles Involved:</strong> <span id="veh-text-${id}">${escapeHtml(vehicles)}</span></div>
+      ${collisionType !== '—' ? `<div style="margin-top:4px;"><strong>💥 Collision Type:</strong> <span id="col-type-${id}">${escapeHtml(collisionType)}</span> &nbsp;|&nbsp; <strong>Severity:</strong> <span id="sev-text-${id}" style="font-weight:700;color:${severity === 'CRITICAL' ? '#DC2626' : (severity === 'MODERATE' ? '#D97706' : '#059669')}">${severity}</span></div>` : ''}
+      ${entrapmentRisk ? `<div style="margin-top:4px;color:#DC2626;font-weight:700;">🆘 High Entrapment Risk: Immediate Extrication Rescue Team Requested</div>` : ''}
+    </div>`;
+
+  const dispTypeHtml = dispType
+    ? `<span class="dispatch-type">${dispType.replace(/_/g,' ')}</span>`
+    : `<span class="dispatch-type" style="opacity:0.4">Not Dispatched</span>`;
+
+  const tgHtml = tgSent === true  ? `<span class="tg-sent">✈ Telegram Sent</span>`
+               : tgSent === false ? `<span class="tg-pending">⏳ Telegram Pending</span>`
+               : `<span class="tg-pending">⏳ Telegram Pending</span>`;
+
+  const speedHtml = speed ? `<span>💨 ${speed} km/h</span>` : '';
+  const vehHtml   = vehType ? `<span>🚗 ${vehType}</span>` : '';
+
+  const confVal = geminiConf != null ? parseFloat(geminiConf)
+                : edgeConf   != null ? parseFloat(edgeConf)
+                : 0;
+
+  const confColor = confVal >= 70
+    ? 'linear-gradient(90deg,#059669,#34D399)'
+    : confVal >= 40
+    ? 'linear-gradient(90deg,#D97706,#FCD34D)'
+    : 'linear-gradient(90deg,#DC2626,#F87171)';
+
+  return `
+<div class="incident-card card-enter" id="card-${id}">
+  <!-- HEADER -->
+  <div class="card-header">
+    <span class="evt-id">${id}</span>
+    <span class="cam-label">${cam}</span>
+    ${statusChip(st)}
+    <span class="ts-label">${ts}</span>
+  </div>
+  ${heavyBannerHtml}
+
+  <!-- DUAL VIDEO ROW -->
+  <div class="video-row">
+    <div class="video-box">
+      <div class="video-title-row">
+        <div class="video-title">🎬 First 10s Clip<br/><span style="opacity:0.6;font-weight:400">Impact Window: T-5s .. T+5s</span></div>
+        <span class="${hasClip1 ? 'video-ready' : 'video-waiting'}" id="badge-clip1-${id}">${hasClip1 ? 'READY' : 'WAITING'}</span>
+      </div>
+      <div class="video-player-wrap" id="playerwrap1-${id}">
+        ${hasClip1
+          ? `<video src="${clip1Src}" controls preload="metadata" style="width:100%;height:100%;"></video>`
+          : `<div class="video-spinner"><div class="spinner-ring"></div>Fetching clip…</div>`
+        }
+      </div>
+    </div>
+    <div class="video-box">
+      <div class="video-title-row">
+        <div class="video-title">🎬 Aftermath Clip<br/><span style="opacity:0.6;font-weight:400">T+31s .. T+41s</span></div>
+        <span class="${hasClip2 ? 'video-ready' : 'video-waiting'}" id="badge-clip2-${id}">${hasClip2 ? 'READY' : 'WAITING'}</span>
+      </div>
+      <div class="video-player-wrap" id="playerwrap2-${id}">
+        ${hasClip2
+          ? `<video src="${clip2Src}" controls preload="metadata" style="width:100%;height:100%;"></video>`
+          : `<div class="video-spinner"><div class="spinner-ring"></div>Fetching clip…</div>`
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- AI ASSESSMENT -->
+  <div class="ai-section">
+    <div class="ai-toggle" onclick="toggleAI('${id}')">
+      <div class="ai-toggle-title">
+        <span class="ai-icon">🤖</span>
+        AI Visual Assessment
+      </div>
+      <svg class="ai-arrow open" id="arrow-${id}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6 9 12 15 18 9"></polyline>
+      </svg>
+    </div>
+    <div class="ai-body open" id="ai-body-${id}">
+      <!-- ALGO PILLS -->
+      <div class="algo-pills">
+        <div class="algo-pill">
+          <div class="algo-pill-icon">📡</div>
+          <div class="algo-pill-name">Frame Diff</div>
+          <div class="algo-pill-val" id="pill-framediff-${id}">${edgeConf != null ? edgeConf+'%' : '…'}</div>
+        </div>
+        <div class="algo-pill">
+          <div class="algo-pill-icon">🎯</div>
+          <div class="algo-pill-name">ByteTrack</div>
+          <div class="algo-pill-val dot-green">Active ✓</div>
+        </div>
+        <div class="algo-pill">
+          <div class="algo-pill-icon">⚡</div>
+          <div class="algo-pill-name">TTC</div>
+          <div class="algo-pill-val ${ttcCls}">${ttcVal}</div>
+        </div>
+        <div class="algo-pill">
+          <div class="algo-pill-icon">🤖</div>
+          <div class="algo-pill-name">Gemini AI</div>
+          <div class="algo-pill-val" id="pill-gemini-${id}">${geminiConf != null ? geminiConf+'%' : '…'}</div>
+        </div>
+        <div class="algo-pill">
+          <div class="algo-pill-icon">⚖️</div>
+          <div class="algo-pill-name">Decision</div>
+          <div class="algo-pill-val" id="pill-decision-${id}">${decisionVal}</div>
+        </div>
+      </div>
+
+      <!-- FORENSIC VEHICLE BOX -->
+      ${vehicleBoxHtml}
+
+      <!-- CONFIDENCE BAR -->
+      <div class="conf-row">
+        <div class="conf-header">
+          <span>Fusion Confidence</span>
+          <span class="conf-pct" id="bar-${id}-fill-pct">${confVal.toFixed(1)}%</span>
+        </div>
+        <div class="conf-track">
+          <div class="conf-fill" id="bar-${id}-fill" style="width:0%;background:${confColor}"></div>
+        </div>
+      </div>
+
+      <!-- RATIONALE -->
+      ${rationale ? `<div class="rationale-box">"${rationale}"</div>` : '<div class="rationale-box" id="rationale-'+id+'"></div>'}
+    </div>
+  </div>
+
+  <!-- DISPATCH FOOTER -->
+  <div class="dispatch-footer" id="dispatch-${id}">
+    ${dispTypeHtml}
+    ${tgHtml}
+    <div class="dispatch-meta">${speedHtml}${vehHtml}</div>
+  </div>
+</div>`;
+}
+
+/* ─── TOGGLE AI SECTION ─── */
+function toggleAI(id) {
+  const body  = document.getElementById('ai-body-' + id);
+  const arrow = document.getElementById('arrow-' + id);
+  if (!body) return;
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  if (arrow) arrow.classList.toggle('open', !isOpen);
+}
+
+/* ─── UPDATE CARD VERIFICATION ─── */
+function updateCardVerification(event_id, verificationData) {
+  const v         = verificationData || {};
+  const edgeConf  = v.edge_confidence   != null ? (v.edge_confidence * 100)   : null;
+  const geminiConf= v.gemini_confidence != null ? (v.gemini_confidence * 100)
+                  : v.confidence        != null ? (v.confidence * 100)        : null;
+
+  const confVal = geminiConf != null ? geminiConf : (edgeConf != null ? edgeConf : 0);
+  const color   = confVal >= 70
+    ? 'linear-gradient(90deg,#059669,#34D399)'
+    : confVal >= 40
+    ? 'linear-gradient(90deg,#D97706,#FCD34D)'
+    : 'linear-gradient(90deg,#DC2626,#F87171)';
+
+  animateBar(`bar-${event_id}-fill`, confVal, color);
+
+  const fdEl = document.getElementById(`pill-framediff-${event_id}`);
+  if (fdEl && edgeConf != null) fdEl.textContent = edgeConf.toFixed(1) + '%';
+
+  const gmEl = document.getElementById(`pill-gemini-${event_id}`);
+  if (gmEl && geminiConf != null) gmEl.textContent = geminiConf.toFixed(1) + '%';
+
+  const ratEl = document.getElementById(`rationale-${event_id}`);
+  if (ratEl && (v.rationale || v.gemini_response)) {
+    ratEl.textContent = `"${v.rationale || v.gemini_response}"`;
+  }
+
+  // Dynamically update vehicle forensics
+  if (v.vehicles_involved && v.vehicles_involved !== 'Unknown') {
+    const vText = document.getElementById(`veh-text-${event_id}`);
+    if (vText) vText.textContent = v.vehicles_involved;
+    const colTypeEl = document.getElementById(`col-type-${event_id}`);
+    if (colTypeEl && v.collision_type) colTypeEl.textContent = v.collision_type;
+    const sevTextEl = document.getElementById(`sev-text-${event_id}`);
+    if (sevTextEl && v.severity) {
+      sevTextEl.textContent = v.severity;
+      sevTextEl.style.color = v.severity === 'CRITICAL' ? '#DC2626' : (v.severity === 'MODERATE' ? '#D97706' : '#059669');
+    }
+  }
+
+  const isHeavy = Boolean(v.heavy_vehicle_involved || (v.vehicles_involved && /truck|trailer|semi|bus|lorry/i.test(v.vehicles_involved)));
+  if (isHeavy && !document.getElementById(`heavy-banner-${event_id}`)) {
+    const cardHeader = document.querySelector(`#card-${event_id} .card-header`);
+    if (cardHeader) {
+      cardHeader.insertAdjacentHTML('afterend', `
+        <div class="heavy-vehicle-pill" id="heavy-banner-${event_id}" style="background:linear-gradient(135deg, #DC2626, #991B1B);color:#fff;font-weight:700;font-size:0.75rem;padding:6px 14px;border-radius:6px;display:flex;align-items:center;justify-content:space-between;margin:8px 0 10px;box-shadow:0 2px 10px rgba(220,38,38,0.35);">
+          <span>🚛 HEAVY COMMERCIAL VEHICLE INVOLVED — HIGH MOMENTUM HAZARD</span>
+          <span style="background:rgba(255,255,255,0.25);padding:2px 8px;border-radius:4px;font-size:0.7rem;">p = m·v</span>
+        </div>`);
+    }
+  }
+
+  if (typeof confVal === 'number' && !isNaN(confVal)) {
+    confidences.push(confVal);
+    updateAvgConf();
+  }
+}
+
+/* ─── RESET ALL TO 0 ─── */
+async function resetAllZero() {
+  if (!confirm('Are you sure you want to reset all incident statistics, video cards, and records back to 0?')) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/system/reset`, { method: 'POST' });
+    const data = await res.json();
+    document.getElementById('stat-total').textContent = '0';
+    document.getElementById('stat-accidents').textContent = '0';
+    document.getElementById('stat-nearmiss').textContent = '0';
+    document.getElementById('stat-dispatched').textContent = '0';
+    document.getElementById('stat-false').textContent = '0';
+    document.getElementById('badge-total').textContent = '0';
+    document.getElementById('badge-confirmed').textContent = '0';
+    document.getElementById('badge-false').textContent = '0';
+    document.getElementById('qs-today').textContent = '0';
+    cardIdSet.clear();
+    confidences = [];
+    const feed = document.getElementById('incident-feed');
+    if (feed) feed.innerHTML = '<div class="empty-state" id="empty-state">Waiting for live video streams…</div>';
+    logEvent('false', '🗑️ Database purged — All telemetry counters reset to 0.');
+    showToast('🗑️', 'System reset to 0 complete');
+  } catch (err) {
+    alert('Reset failed: ' + err.message);
+  }
+}
+
+/* ─── UPDATE CARD DISPATCH ─── */
+function updateCardDispatch(event_id, dispatchData) {
+  const d   = dispatchData || {};
+  const el  = document.getElementById(`dispatch-${event_id}`);
+  if (!el) return;
+
+  const dispType  = d.dispatch_type || null;
+  const tgSent    = d.telegram_sent;
+  const speed     = d.collision_speed || null;
+  const vehType   = d.vehicle_type    || null;
+
+  const dispTypeHtml = dispType
+    ? `<span class="dispatch-type">${dispType.replace(/_/g,' ')}</span>`
+    : `<span class="dispatch-type" style="opacity:0.4">Not Dispatched</span>`;
+
+  const tgHtml   = tgSent ? `<span class="tg-sent">✈ Telegram Sent</span>`
+                           : `<span class="tg-pending">⏳ Telegram Pending</span>`;
+  const speedHtml = speed   ? `<span>💨 ${speed} km/h</span>` : '';
+  const vehHtml   = vehType ? `<span>🚗 ${vehType}</span>`   : '';
+
+  el.innerHTML = `${dispTypeHtml}${tgHtml}<div class="dispatch-meta">${speedHtml}${vehHtml}</div>`;
+}
+
+/* ─── UPDATE STATUS CHIP ON CARD ─── */
+function updateCardStatus(event_id, newStatus) {
+  const card = document.getElementById(`card-${event_id}`);
+  if (!card) return;
+  const header = card.querySelector('.card-header');
+  if (!header) return;
+  const existing = header.querySelector('.status-chip');
+  if (existing) existing.outerHTML = statusChip(newStatus);
+  else header.insertAdjacentHTML('beforeend', statusChip(newStatus));
+
+  // Update decision pill
+  let decisionVal = '—';
+  if      (newStatus === 'VERIFIED_ACCIDENT')  decisionVal = 'ACCIDENT';
+  else if (newStatus === 'VERIFIED_NEAR_MISS') decisionVal = 'NEAR-MISS';
+  else if (newStatus === 'DISPATCHED')         decisionVal = 'DISPATCHED';
+  else if (newStatus === 'FALSE_POSITIVE')     decisionVal = 'FALSE';
+  else if (newStatus === 'VERIFYING')          decisionVal = 'FUSING…';
+  else                                          decisionVal = 'PENDING';
+  const dEl = document.getElementById(`pill-decision-${event_id}`);
+  if (dEl) dEl.textContent = decisionVal;
+}
+
+/* ─── UPDATE CARD CLIPS ─── */
+function updateCardClips(id, clipNumber) {
+  if (clipNumber === 1 || !clipNumber) {
+    const b1 = document.getElementById(`badge-clip1-${id}`);
+    const w1 = document.getElementById(`playerwrap1-${id}`);
+    if (b1) { b1.className = 'video-ready'; b1.textContent = 'READY'; }
+    if (w1 && !w1.querySelector('video')) {
+      w1.innerHTML = `<video src="${API_BASE}/clips/${id}/clip1.mp4" controls preload="metadata" style="width:100%;height:100%;"></video>`;
+    }
+  }
+  if (clipNumber === 2 || !clipNumber) {
+    const b2 = document.getElementById(`badge-clip2-${id}`);
+    const w2 = document.getElementById(`playerwrap2-${id}`);
+    if (b2) { b2.className = 'video-ready'; b2.textContent = 'READY'; }
+    if (w2 && !w2.querySelector('video')) {
+      w2.innerHTML = `<video src="${API_BASE}/clips/${id}/clip2.mp4" controls preload="metadata" style="width:100%;height:100%;"></video>`;
+    }
+  }
+}
+
+/* ─── PREPEND CARD ─── */
+function prependCard(incident) {
+  const id = incident.event_id || incident.id;
+  if (!id) return;
+
+  const feed = document.getElementById('incident-feed');
+  const empty = document.getElementById('empty-state');
+  if (empty) empty.remove();
+
+  if (cardIdSet.has(id)) {
+    // Update existing card's status and video players
+    if (incident.status) updateCardStatus(id, incident.status);
+    if (incident.clip_number) updateCardClips(id, incident.clip_number);
+    if (incident.clip1_path)  updateCardClips(id, 1);
+    if (incident.clip2_path)  updateCardClips(id, 2);
+    return;
+  }
+  cardIdSet.add(id);
+
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = renderCard(incident).trim();
+  const cardEl = wrapper.firstChild;
+  feed.insertBefore(cardEl, feed.firstChild);
+
+  // Animate confidence bar after a small delay
+  const confVal = incident.verification?.gemini_confidence != null
+    ? incident.verification.gemini_confidence * 100
+    : incident.verification?.edge_confidence != null
+    ? incident.verification.edge_confidence * 100
+    : 0;
+  const color = confVal >= 70
+    ? 'linear-gradient(90deg,#059669,#34D399)'
+    : confVal >= 40
+    ? 'linear-gradient(90deg,#D97706,#FCD34D)'
+    : 'linear-gradient(90deg,#DC2626,#F87171)';
+  setTimeout(() => animateBar(`bar-${id}-fill`, confVal, color), 200);
+}
+
+/* ─── UPDATE HERO STATS ─── */
+function updateStats(data) {
+  const total      = data.total_incidents || data.total      || 0;
+  const accidents  = data.accidents       || data.confirmed  || 0;
+  const nearmiss   = (data.near_miss_count || 0) + (data.predictive_count || 0) || data.nearmiss || 0;
+  const dispatched = data.dispatched      || 0;
+  const falseAlarm = data.false_positives || data.false_alarm || 0;
+
+  animateStatValue('stat-total',     total);
+  animateStatValue('stat-accidents', accidents);
+  animateStatValue('stat-nearmiss',  nearmiss);
+  animateStatValue('stat-dispatched',dispatched);
+  animateStatValue('stat-false',     falseAlarm);
+
+  document.getElementById('badge-total').textContent     = total;
+  document.getElementById('badge-confirmed').textContent = accidents;
+  document.getElementById('badge-false').textContent     = falseAlarm;
+  document.getElementById('qs-today').textContent        = total;
+
+  // Pie chart update
+  pieData.accident  = accidents;
+  pieData.nearmiss  = nearmiss;
+  pieData.dispatched= dispatched;
+  pieData.false_alarm = falseAlarm;
+  updatePieChart();
+}
+
+function animateStatValue(id, target) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const current = parseInt(el.textContent) || 0;
+  if (current === target) return;
+  const step = Math.sign(target - current);
+  const diff = Math.abs(target - current);
+  if (diff <= 3) { el.textContent = target; return; }
+  let val = current;
+  const interval = setInterval(() => {
+    val += step;
+    el.textContent = val;
+    if (val === target) clearInterval(interval);
+  }, 50);
+}
+
+function updateAvgConf() {
+  if (!confidences.length) return;
+  const avg = confidences.reduce((a,b) => a+b, 0) / confidences.length;
+  const el = document.getElementById('qs-conf');
+  if (el) el.textContent = avg.toFixed(1) + '%';
+}
+
+function updatePieChart() {
+  const pie = document.getElementById('pie-chart');
+  if (!pie) return;
+  const total = pieData.accident + pieData.nearmiss + pieData.dispatched + pieData.false_alarm;
+  if (!total) return;
+  const a = (pieData.accident   / total * 100).toFixed(1);
+  const n = ((pieData.accident + pieData.nearmiss)  / total * 100).toFixed(1);
+  const d = ((pieData.accident + pieData.nearmiss + pieData.dispatched) / total * 100).toFixed(1);
+  pie.style.background = `conic-gradient(
+    var(--danger)   0% ${a}%,
+    var(--nearmiss) ${a}% ${n}%,
+    var(--success)  ${n}% ${d}%,
+    var(--gray)     ${d}% 100%
+  )`;
+}
+
+/* ─── EVENT LOG ENTRY ─── */
+function logEvent(type, message) {
+  const log = document.getElementById('event-log');
+  if (!log) return;
+  const now = new Date();
+  const ts  = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+
+  const cls = {
+    incident: 'type-incident',
+    verified: 'type-verified',
+    dispatch: 'type-dispatch',
+    nearmiss: 'type-nearmiss',
+    false:    'type-false',
+  }[type] || '';
+
+  const entry = document.createElement('div');
+  entry.className = `evt-entry ${cls}`;
+  entry.innerHTML = `<span class="evt-time">${ts}</span><span class="evt-msg">${message}</span>`;
+  log.insertBefore(entry, log.firstChild);
+  // Keep max 60 entries
+  while (log.children.length > 60) log.removeChild(log.lastChild);
+
+  sseMsgCount++;
+  const cntEl = document.getElementById('qs-sse-cnt');
+  if (cntEl) cntEl.textContent = sseMsgCount;
+}
+
+/* ─── TOAST ─── */
+function showToast(icon, message, duration = 4000) {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.innerHTML = `<span class="toast-icon">${icon}</span><span>${message}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(30px)';
+    toast.style.transition = 'all 0.3s ease';
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
+}
+
+/* ─── LOAD INCIDENTS ─── */
+async function loadIncidents() {
+  try {
+    const res = await fetch(`${API_BASE}/api/incidents?limit=20`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const list = Array.isArray(data) ? data : (data.incidents || []);
+    // Render newest-first
+    [...list].reverse().forEach(inc => prependCard(inc));
+    updateFromIncidents(list);
+  } catch (e) {
+    logEvent('false', `⚠ Could not load incidents: ${e.message}`);
+  }
+}
+
+function updateFromIncidents(list) {
+  const counts = { total:0, accidents:0, nearmiss:0, dispatched:0, false_alarm:0 };
+  list.forEach(i => {
+    counts.total++;
+    if (i.status === 'VERIFIED_ACCIDENT')  counts.accidents++;
+    if (i.status === 'VERIFIED_NEAR_MISS') counts.nearmiss++;
+    if (i.status === 'DISPATCHED')         { counts.dispatched++; counts.accidents++; }
+    if (i.status === 'FALSE_POSITIVE')     counts.false_alarm++;
+  });
+  updateStats(counts);
+}
+
+/* ─── LOAD STATUS ─── */
+async function loadStatus() {
+  try {
+    const res = await fetch(`${API_BASE}/api/status`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    updateStats(data);
+    if (data.server_url) {
+      const urlEl = document.getElementById('server-url');
+      if (urlEl) urlEl.textContent = data.server_url;
+    }
+  } catch (e) {
+    // Status endpoint may not exist — silently skip
+  }
+}
+
+/* ─── SSE CONNECTION ─── */
+function connectSSE() {
+  if (sseSource) { sseSource.close(); sseSource = null; }
+
+  const dot   = document.getElementById('sse-dot');
+  const label = document.getElementById('sse-label');
+  const connDot   = document.getElementById('conn-dot');
+  const connLabel = document.getElementById('conn-label');
+
+  try {
+    sseSource = new EventSource(SSE_URL);
+  } catch(e) {
+    setSseDisconnected();
+    scheduleReconnect();
+    return;
+  }
+
+  sseSource.onopen = () => {
+    dot.classList.remove('off');
+    if (label) label.textContent = 'Live';
+    connDot.classList.remove('disconnected');
+    if (connLabel) connLabel.textContent = 'Connected';
+    logEvent('incident', '🔗 SSE stream connected');
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+  };
+
+  sseSource.onerror = () => {
+    setSseDisconnected();
+    scheduleReconnect();
+  };
+
+  /* INCIDENT_UPDATE */
+  sseSource.addEventListener('INCIDENT_UPDATE', (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      const id   = data.event_id || data.id;
+      prependCard(data);
+      logEvent('incident', `📡 New incident <strong>${id}</strong> from ${data.camera_id||'camera'}`);
+      showToast('📡', `New incident detected: ${id}`);
+    } catch {}
+  });
+
+  /* VERIFICATION_COMPLETED */
+  sseSource.addEventListener('VERIFICATION_COMPLETED', (e) => {
+    try {
+      const data  = JSON.parse(e.data);
+      const id    = data.event_id;
+      const verif = data.verification || data;
+      updateCardVerification(id, verif);
+      updateCardStatus(id, data.status);
+      updateCardClips(id, 1);
+      updateCardClips(id, 2);
+      const isFalse = data.status === 'FALSE_POSITIVE';
+      logEvent(isFalse ? 'false' : 'verified',
+        `🤖 AI verified <strong>${id}</strong> → ${STATUS_MAP[data.status]?.label || data.status}`
+      );
+      if (!isFalse) showToast('🚨', `Accident confirmed: ${id}`);
+    } catch {}
+  });
+
+  /* DISPATCH_SENT */
+  sseSource.addEventListener('DISPATCH_SENT', (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      const id   = data.event_id;
+      updateCardDispatch(id, data);
+      updateCardStatus(id, 'DISPATCHED');
+      logEvent('dispatch', `🚁 Emergency dispatched for <strong>${id}</strong>`);
+      showToast('🚁', `Emergency dispatched: ${id}`, 6000);
+    } catch {}
+  });
+
+  /* SYSTEM_RESET */
+  sseSource.addEventListener('SYSTEM_RESET', (e) => {
+    try {
+      cardIdSet.clear();
+      confidences = [];
+      document.getElementById('stat-total').textContent = '0';
+      document.getElementById('stat-accidents').textContent = '0';
+      document.getElementById('stat-nearmiss').textContent = '0';
+      document.getElementById('stat-dispatched').textContent = '0';
+      document.getElementById('stat-false').textContent = '0';
+      document.getElementById('badge-total').textContent = '0';
+      document.getElementById('badge-confirmed').textContent = '0';
+      document.getElementById('badge-false').textContent = '0';
+      document.getElementById('qs-today').textContent = '0';
+      const feed = document.getElementById('incident-feed');
+      if (feed) feed.innerHTML = '<div class="empty-state" id="empty-state">Waiting for live video streams…</div>';
+      logEvent('false', '🗑️ Remote system reset: All counters restored to 0.');
+    } catch {}
+  });
+
+  /* Generic message */
+  sseSource.onmessage = (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      logEvent('incident', `📨 ${data.type || 'EVENT'}: ${data.event_id || JSON.stringify(data).slice(0,60)}`);
+    } catch {
+      logEvent('incident', `📨 ${String(e.data).slice(0,80)}`);
+    }
+  };
+}
+
+function setSseDisconnected() {
+  const dot   = document.getElementById('sse-dot');
+  const label = document.getElementById('sse-label');
+  const connDot   = document.getElementById('conn-dot');
+  const connLabel = document.getElementById('conn-label');
+  if (dot)       dot.classList.add('off');
+  if (label)     label.textContent = 'Disconnected';
+  if (connDot)   connDot.classList.add('disconnected');
+  if (connLabel) connLabel.textContent = 'Disconnected';
+  logEvent('false', '⚡ SSE stream disconnected');
+}
+
+function scheduleReconnect() {
+  if (reconnectTimer) return;
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    logEvent('incident', '🔄 Reconnecting SSE…');
+    connectSSE();
+  }, 3000);
+}
+
+/* ─── REFRESH ALL ─── */
+async function refreshAll() {
+  logEvent('incident', '🔄 Manual refresh triggered');
+  await loadStatus();
+  await loadIncidents();
+  showToast('🔄', 'Dashboard refreshed');
+}
+
+/* ─── BOOT ─── */
+(async () => {
+  logEvent('incident', '🧠 COGNETRA 3.0 Monitor initialising…');
+  await loadStatus();
+  await loadIncidents();
+  connectSSE();
+  // Periodic status refresh every 30s
+  setInterval(loadStatus, 30_000);
+})();
+</script>
+</body>
+</html>

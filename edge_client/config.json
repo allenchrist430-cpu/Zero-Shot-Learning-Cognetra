@@ -1,0 +1,17 @@
+{
+  "server_url": "http://127.0.0.1:9000",
+  "camera_id": "CAM-001",
+  "videos_dir": "videos",
+  "queue_dir": "queue",
+  "logs_dir": "logs",
+  "loop_videos": false,
+  "cooldown_seconds": 15.0,
+  "history_window_seconds": 2.0,
+  "warmup_seconds": 2.2,
+  "frame_width": 320,
+  "upload_retry_max": 5,
+  "upload_retry_base_delay": 2.0,
+  "ttc_threshold_seconds": 1.5,
+  "panic_brake_drop_pct": 0.75,
+  "panic_brake_window_seconds": 0.45
+}
