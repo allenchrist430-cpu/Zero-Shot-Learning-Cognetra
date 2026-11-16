@@ -100,11 +100,17 @@ if dashboard_path.exists():
 
     @app.get("/", response_class=FileResponse)
     async def serve_backend_dashboard():
-        return FileResponse(str(dashboard_path / "index.html"))
+        return FileResponse(
+            str(dashboard_path / "index.html"),
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
+        )
 
     @app.get("/monitor", response_class=FileResponse)
     async def serve_monitor_dashboard():
-        return FileResponse(str(dashboard_path / "monitor.html"))
+        return FileResponse(
+            str(dashboard_path / "monitor.html"),
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
+        )
 
 else:
     @app.get("/")
@@ -116,10 +122,14 @@ else:
         return JSONResponse({"message": "Monitor not found. Place monitor.html in /dashboard/"})
 
 
-# ── Clips serving (for dashboard video playback) ──────────────────────────────
+# ── Clips & Source Videos serving ──────────────────────────────────────────────
 clips_path = Path(settings.CLIPS_DIR)
 if clips_path.exists():
     app.mount("/clips", StaticFiles(directory=str(clips_path)), name="clips")
+
+source_videos_path = Path(settings.BASE_DIR).parent / "edge_client" / "videos"
+if source_videos_path.exists():
+    app.mount("/source_videos", StaticFiles(directory=str(source_videos_path)), name="source_videos")
 
 
 # ── Entry Point ───────────────────────────────────────────────────────────────
