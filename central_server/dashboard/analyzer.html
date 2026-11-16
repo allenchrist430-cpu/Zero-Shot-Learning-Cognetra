@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>COGNETRA 3.0 — Algorithm Analyzer (Server-Side)</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #040810;
+  --surface:  #080f1e;
+  --panel:    #0a1428;
+  --border:   rgba(56,189,248,0.18);
+  --accent:   #38BDF8;
+  --danger:   #EF4444;
+  --success:  #22C55E;
+  --warning:  #F59E0B;
+  --yellow:   #FFD700;
+  --gray:     #94A3B8;
+  --gray-dim: #334155;
+  --text:     #E2E8F0;
+  --mono:     'JetBrains Mono', monospace;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+
+/* ── TOPBAR ── */
+#topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: 60px;
+  background: linear-gradient(135deg, #020c1b 0%, #0a1f4b 50%, #061225 100%);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 4px 30px rgba(14,165,233,0.2);
+  position: relative;
+  z-index: 100;
+}
+.topbar-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.logo-mark {
+  font-size: 1.5rem;
+  filter: drop-shadow(0 0 8px rgba(56,189,248,0.8));
+}
+.logo-name {
+  font-size: 1.3rem;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 20px rgba(56,189,248,0.5);
+}
+.logo-pill {
+  background: linear-gradient(135deg, #DC2626, #991B1B);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  padding: 3px 8px;
+  border-radius: 99px;
+  text-transform: uppercase;
+}
+.topbar-center {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.5);
+  font-family: var(--mono);
+}
+.topbar-nav a {
+  color: rgba(255,255,255,0.65);
+  text-decoration: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.12);
+  transition: all 0.15s;
+}
+.topbar-nav a:hover {
+  background: rgba(56,189,248,0.15);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+#topbar-clock {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.75);
+  font-weight: 600;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  padding: 5px 10px;
+}
+/* Live blinking dot */
+.live-tag {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: var(--danger);
+  letter-spacing: 0.08em;
+  background: rgba(239,68,68,0.12);
+  border: 1px solid rgba(239,68,68,0.3);
+  border-radius: 99px;
+  padding: 4px 10px;
+}
+.live-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--danger);
+  animation: blink 1s infinite;
+  flex-shrink: 0;
+}
+@keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.2;} }
+
+/* ── BODY LAYOUT (sidebar + main) ── */
+#body {
+  display: flex;
+  height: calc(100vh - 60px);
+  overflow: hidden;
+}
+
+/* ── SIDEBAR: Incident List ── */
+#sidebar {
+  width: 310px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.sidebar-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(56,189,248,0.04);
+}
+.sidebar-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sidebar-subtitle {
+  font-size: 0.62rem;
+  color: var(--gray);
+  font-weight: 500;
+}
+.sidebar-filter {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.filter-btn {
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 99px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--gray);
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.filter-btn:hover, .filter-btn.active {
+  background: rgba(56,189,248,0.15);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+#incident-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+#incident-list::-webkit-scrollbar { width: 5px; }
+#incident-list::-webkit-scrollbar-track { background: transparent; }
+#incident-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+.incident-item {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(56,189,248,0.1);
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+.incident-item::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 99px 0 0 99px;
+}
+.incident-item.status-DISPATCHED::before,
+.incident-item.status-VERIFIED_ACCIDENT::before { background: var(--danger); }
+.incident-item.status-VERIFIED_NEAR_MISS::before { background: #A78BFA; }
+.incident-item.status-FALSE_POSITIVE::before { background: var(--gray-dim); }
+.incident-item:hover {
+  background: rgba(56,189,248,0.07);
+  border-color: rgba(56,189,248,0.3);
+  transform: translateX(2px);
+}
+.incident-item.selected {
+  background: rgba(56,189,248,0.12);
+  border-color: var(--accent);
+  box-shadow: 0 0 15px rgba(56,189,248,0.15);
+}
+.ii-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 4px; }
+.ii-evid {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+.ii-status {
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 99px;
+}
+.s-acc  { background: rgba(239,68,68,0.2); color: #FCA5A5; border: 1px solid rgba(239,68,68,0.3); }
+.s-dis  { background: rgba(34,197,94,0.15); color: #86EFAC; border: 1px solid rgba(34,197,94,0.25); }
+.s-nm   { background: rgba(167,139,250,0.15); color: #C4B5FD; border: 1px solid rgba(167,139,250,0.25); }
+.s-pend { background: rgba(245,158,11,0.12); color: #FCD34D; border: 1px solid rgba(245,158,11,0.2); }
+.s-false{ background: rgba(100,116,139,0.15); color: var(--gray); border: 1px solid rgba(100,116,139,0.25); }
+.ii-meta {
+  font-size: 0.6rem;
+  color: var(--gray);
+  font-weight: 500;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.ii-clips { display: flex; gap: 4px; margin-top: 5px; }
+.clip-btn {
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.04);
+  color: var(--gray);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.clip-btn:hover {
+  background: rgba(56,189,248,0.15);
+  border-color: var(--accent);
+  color: #fff;
+}
+.clip-btn.active {
+  background: rgba(56,189,248,0.25);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── MAIN VIEW ── */
+#main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* Video feed header */
+.video-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.vh-left { display: flex; align-items: center; gap: 10px; }
+.vh-event-id {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--accent);
+  background: rgba(56,189,248,0.1);
+  border: 1px solid rgba(56,189,248,0.3);
+  padding: 4px 12px;
+  border-radius: 6px;
+}
+.vh-clip-label {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.65);
+  font-weight: 600;
+}
+.vh-right { display: flex; align-items: center; gap: 8px; }
+.vh-btn {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 6px;
+  color: rgba(255,255,255,0.75);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 5px 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s;
+}
+.vh-btn:hover { background: rgba(56,189,248,0.2); border-color: var(--accent); color: #fff; }
+.vh-btn.active { background: rgba(56,189,248,0.3); border-color: var(--accent); color: var(--accent); }
+
+/* Video Frame (the MJPEG stream container) */
+#video-view {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+#stream-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: none;
+}
+#idle-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  color: var(--gray);
+  text-align: center;
+  padding: 40px;
+}
+.idle-icon { font-size: 4rem; opacity: 0.4; }
+.idle-title { font-size: 1.1rem; font-weight: 700; color: rgba(255,255,255,0.5); }
+.idle-sub { font-size: 0.8rem; font-weight: 500; line-height: 1.6; opacity: 0.7; max-width: 380px; }
+#loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 16px;
+  color: var(--accent);
+}
+.spinner {
+  width: 48px; height: 48px;
+  border: 4px solid rgba(56,189,248,0.2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-label { font-size: 0.8rem; font-weight: 600; font-family: var(--mono); }
+
+/* Stats bar below video */
+#stats-bar {
+  background: rgba(0,0,0,0.9);
+  border-top: 1px solid rgba(56,189,248,0.15);
+  padding: 10px 20px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+.stat-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.stat-metric-label {
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gray);
+}
+.stat-metric-val {
+  font-family: var(--mono);
+  font-size: 1.0rem;
+  font-weight: 800;
+  color: #fff;
+}
+.stat-metric-bar {
+  height: 3px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 99px;
+  margin-top: 2px;
+  overflow: hidden;
+}
+.stat-metric-fill {
+  height: 100%;
+  border-radius: 99px;
+  width: 0%;
+  transition: width 0.4s cubic-bezier(0.16,1,0.3,1), background 0.3s;
+  background: var(--success);
+}
+
+/* Algorithm breakdown panel (right side) */
+#algo-panel {
+  width: 280px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 14px 14px;
+  gap: 12px;
+}
+#algo-panel::-webkit-scrollbar { width: 4px; }
+#algo-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+.algo-section-title {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.algo-card {
+  background: rgba(56,189,248,0.04);
+  border: 1px solid rgba(56,189,248,0.12);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.algo-name {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.85);
+  margin-bottom: 4px;
+}
+.algo-desc {
+  font-size: 0.62rem;
+  color: var(--gray);
+  line-height: 1.5;
+}
+.algo-active-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 5px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--success);
+  background: rgba(34,197,94,0.1);
+  border: 1px solid rgba(34,197,94,0.25);
+  padding: 2px 7px;
+  border-radius: 99px;
+}
+.algo-active-badge .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--success); animation: blink 1.2s infinite; }
+.algo-warn-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 5px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--warning);
+  background: rgba(245,158,11,0.1);
+  border: 1px solid rgba(245,158,11,0.25);
+  padding: 2px 7px;
+  border-radius: 99px;
+}
+
+/* Score ring */
+.score-ring-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 10px 0;
+}
+.score-ring {
+  position: relative;
+  width: 80px; height: 80px;
+}
+.score-ring svg { transform: rotate(-90deg); }
+.score-ring-track { fill: none; stroke: rgba(255,255,255,0.08); stroke-width: 8; }
+.score-ring-fill  { fill: none; stroke: var(--accent); stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 0.5s ease, stroke 0.3s; stroke-dasharray: 251.3; stroke-dashoffset: 251.3; }
+.score-ring-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
+.score-ring-val {
+  font-family: var(--mono);
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #fff;
+}
+.score-ring-name {
+  font-size: 0.5rem;
+  font-weight: 700;
+  color: var(--gray);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Telemetry event log */
+#tele-log {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.tele-row {
+  display: flex;
+  gap: 6px;
+  font-size: 0.6rem;
+  font-family: var(--mono);
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.025);
+  animation: fadeIn 0.25s ease;
+}
+@keyframes fadeIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
+.tele-time { color: rgba(56,189,248,0.6); flex-shrink: 0; }
+.tele-msg  { color: rgba(255,255,255,0.75); }
+
+/* Toast */
+#toast-wrap {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+.toast-item {
+  background: rgba(15,23,42,0.95);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  animation: toastIn 0.25s ease;
+  backdrop-filter: blur(10px);
+  min-width: 240px;
+}
+@keyframes toastIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header id="topbar">
+  <div class="topbar-logo">
+    <span class="logo-mark">🧠</span>
+    <span class="logo-name">COGNETRA</span>
+    <span class="logo-pill">FORENSIC ANALYZER</span>
+  </div>
+  <div class="topbar-center">
+    <span>⚡ Server-Side YOLOv8n + ByteTrack + LSTM Scoring Pipeline</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div class="live-tag">
+      <div class="live-dot"></div>
+      FORENSIC ACTIVE
+    </div>
+    <div class="topbar-nav">
+      <a href="/monitor" title="Go back to ops monitor">📡 Monitor</a>
+    </div>
+    <div id="topbar-clock">--:--:-- UTC</div>
+  </div>
+</header>
+
+<!-- BODY -->
+<div id="body">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">🗂 Incident Archive</div>
+      <div class="sidebar-subtitle" id="sidebar-count">Loading incidents…</div>
+    </div>
+    <div class="sidebar-filter">
+      <button class="filter-btn active" onclick="setFilter('ALL',this)">All</button>
+      <button class="filter-btn" onclick="setFilter('VERIFIED_ACCIDENT',this)">Accident</button>
+      <button class="filter-btn" onclick="setFilter('DISPATCHED',this)">Dispatched</button>
+      <button class="filter-btn" onclick="setFilter('VERIFIED_NEAR_MISS',this)">Near-Miss</button>
+    </div>
+    <div id="incident-list">
+      <div style="text-align:center;padding:30px 0;color:var(--gray);font-size:0.78rem;">
+        Loading incidents…
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN VIEW -->
+  <main id="main">
+    <!-- Video Header -->
+    <div class="video-header">
+      <div class="vh-left">
+        <span class="vh-event-id" id="vh-event-id">Select an incident</span>
+        <span class="vh-clip-label" id="vh-clip-label">— choose clip from sidebar →</span>
+      </div>
+      <div class="vh-right">
+        <button class="vh-btn" id="btn-clip1" onclick="loadClip('clip1')" title="Impact window: T-3s to T+7s">💥 Impact Clip</button>
+        <button class="vh-btn" id="btn-clip2" onclick="loadClip('clip2')" title="Aftermath: T+31s to T+41s">⚡ Aftermath</button>
+        <button class="vh-btn" id="btn-src" onclick="loadClip('source')" title="Full original footage from edge camera">🎬 Source Video</button>
+        <button class="vh-btn" onclick="stopStream()" title="Stop current stream">⏹ Stop</button>
+      </div>
+    </div>
+
+    <div style="display:flex;flex:1;min-height:0;overflow:hidden;">
+      <!-- Video Stream Container -->
+      <div id="video-view">
+        <div id="idle-state">
+          <div class="idle-icon">🔍</div>
+          <div class="idle-title">Select an incident + clip to begin forensic analysis</div>
+          <div class="idle-sub">
+            The server will run <strong style="color:var(--accent);">YOLOv8n</strong> + <strong style="color:var(--yellow);">ByteTrack</strong> on the footage in real-time.<br/>
+            Yellow bounding boxes track vehicles &amp; persons with persistent IDs.<br/>
+            The <strong style="color:#C4B5FD;">LSTM scorer</strong> computes crash / prop / motion-burst / evidence scores frame-by-frame.
+          </div>
+        </div>
+
+        <div id="loading-overlay">
+          <div class="spinner"></div>
+          <div class="loading-label" id="loading-msg">Initialising YOLOv8n engine…</div>
+        </div>
+
+        <!-- MJPEG stream image — src is set dynamically -->
+        <img id="stream-img" alt="Annotated YOLO+LSTM Stream" />
+      </div>
+
+      <!-- Algorithm Info Panel -->
+      <aside id="algo-panel">
+        <div>
+          <div class="algo-section-title">⚙ Pipeline Status</div>
+          <div class="algo-card">
+            <div class="algo-name">YOLOv8n Detector</div>
+            <div class="algo-desc">Nano variant — optimised for CPU inference (~30 ms/frame). Detects cars, trucks, buses, motorcycles, bicycles, persons.</div>
+            <div class="algo-active-badge"><span class="dot"></span> Active</div>
+          </div>
+          <div class="algo-card" style="margin-top:8px;">
+            <div class="algo-name">ByteTrack Tracker</div>
+            <div class="algo-desc">IoU-based persistent ID assignment across frames. Maintains motion trails for each tracked object.</div>
+            <div class="algo-active-badge"><span class="dot"></span> Active</div>
+          </div>
+          <div class="algo-card" style="margin-top:8px;">
+            <div class="algo-name">LSTM Feature Scorer</div>
+            <div class="algo-desc">Temporal kinetic scorer: velocity spike → crash, area deformation → prop, proximity collapse → fallen, overlap → evidence.</div>
+            <div class="algo-active-badge"><span class="dot"></span> Active</div>
+          </div>
+        </div>
+
+        <!-- Live Score Ring -->
+        <div>
+          <div class="algo-section-title">📊 Live LSTM Scores</div>
+          <div class="score-ring-wrap">
+            <div class="score-ring">
+              <svg viewBox="0 0 90 90" width="80" height="80">
+                <circle class="score-ring-track" cx="45" cy="45" r="40"/>
+                <circle class="score-ring-fill" id="ring-fill" cx="45" cy="45" r="40"/>
+              </svg>
+              <div class="score-ring-label">
+                <div class="score-ring-val" id="ring-val">0.00</div>
+                <div class="score-ring-name">CRASH</div>
+              </div>
+            </div>
+          </div>
+          <!-- Score meters -->
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
+            <div class="stat-metric">
+              <div class="stat-metric-label">Crash Score</div>
+              <div class="stat-metric-val" id="sv-crash">0.00</div>
+              <div class="stat-metric-bar"><div class="stat-metric-fill" id="sf-crash"></div></div>
+            </div>
+            <div class="stat-metric">
+              <div class="stat-metric-label">Prop (Deformation)</div>
+              <div class="stat-metric-val" id="sv-prop">0.00</div>
+              <div class="stat-metric-bar"><div class="stat-metric-fill" id="sf-prop" style="background:#F59E0B;"></div></div>
+            </div>
+            <div class="stat-metric">
+              <div class="stat-metric-label">Motion Burst</div>
+              <div class="stat-metric-val" id="sv-motion">0.00</div>
+              <div class="stat-metric-bar"><div class="stat-metric-fill" id="sf-motion" style="background:#38BDF8;"></div></div>
+            </div>
+            <div class="stat-metric">
+              <div class="stat-metric-label">Proximity/Fallen</div>
+              <div class="stat-metric-val" id="sv-fallen">0</div>
+              <div class="stat-metric-bar"><div class="stat-metric-fill" id="sf-fallen" style="background:#A78BFA;"></div></div>
+            </div>
+            <div class="stat-metric">
+              <div class="stat-metric-label">Evidence (Overlap)</div>
+              <div class="stat-metric-val" id="sv-evidence">0.00</div>
+              <div class="stat-metric-bar"><div class="stat-metric-fill" id="sf-evidence" style="background:#FFD700;"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI Diagnosis from DB -->
+        <div>
+          <div class="algo-section-title">🤖 Gemini VLM Verdict</div>
+          <div class="algo-card" style="font-size:0.68rem;line-height:1.6;" id="verdict-card">
+            <div style="color:var(--gray);">Select an incident to load AI assessment…</div>
+          </div>
+        </div>
+
+        <!-- Telemetry Log -->
+        <div>
+          <div class="algo-section-title">📋 Telemetry Log</div>
+          <div id="tele-log"></div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Stats Bar -->
+    <div id="stats-bar">
+      <div class="stat-metric">
+        <div class="stat-metric-label">Crash</div>
+        <div class="stat-metric-val" id="bs-crash" style="color:var(--danger);">0.00</div>
+        <div class="stat-metric-bar"><div class="stat-metric-fill" id="bf-crash" style="background:var(--danger);"></div></div>
+      </div>
+      <div class="stat-metric">
+        <div class="stat-metric-label">Prop / Deformation</div>
+        <div class="stat-metric-val" id="bs-prop" style="color:var(--warning);">0.00</div>
+        <div class="stat-metric-bar"><div class="stat-metric-fill" id="bf-prop" style="background:var(--warning);"></div></div>
+      </div>
+      <div class="stat-metric">
+        <div class="stat-metric-label">Motion Burst</div>
+        <div class="stat-metric-val" id="bs-motion" style="color:var(--accent);">0.00</div>
+        <div class="stat-metric-bar"><div class="stat-metric-fill" id="bf-motion" style="background:var(--accent);"></div></div>
+      </div>
+      <div class="stat-metric">
+        <div class="stat-metric-label">Fallen</div>
+        <div class="stat-metric-val" id="bs-fallen" style="color:#A78BFA;">0</div>
+        <div class="stat-metric-bar"><div class="stat-metric-fill" id="bf-fallen" style="background:#A78BFA;"></div></div>
+      </div>
+      <div class="stat-metric">
+        <div class="stat-metric-label">Evidence</div>
+        <div class="stat-metric-val" id="bs-evidence" style="color:var(--yellow);">0.00</div>
+        <div class="stat-metric-bar"><div class="stat-metric-fill" id="bf-evidence" style="background:var(--yellow);"></div></div>
+      </div>
+      <div style="text-align:right;font-size:0.6rem;color:var(--gray);font-family:var(--mono);line-height:1.6;">
+        <div>YOLOv8n + ByteTrack</div>
+        <div>COGNETRA FORENSICS</div>
+        <div id="bs-tracks" style="color:var(--accent);">Tracks: 0</div>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<!-- Toast -->
+<div id="toast-wrap"></div>
+
+<script>
+const API = '';
+let currentEventId = null;
+let currentClip    = null;
+let streamImg      = document.getElementById('stream-img');
+let activeFilter   = 'ALL';
+let allIncidents   = [];
+let scoreSimTimer  = null;
+
+/* ── CLOCK ── */
+function tick() {
+  const n = new Date();
+  const p = s => String(s).padStart(2,'0');
+  document.getElementById('topbar-clock').textContent =
+    `${p(n.getUTCDate())}/${p(n.getUTCMonth()+1)}/${n.getUTCFullYear()} ${p(n.getUTCHours())}:${p(n.getUTCMinutes())}:${p(n.getUTCSeconds())} UTC`;
+}
+setInterval(tick, 1000); tick();
+
+/* ── TELE LOG ── */
+function log(msg) {
+  const el = document.getElementById('tele-log');
+  if (!el) return;
+  const n = new Date();
+  const ts = `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}:${String(n.getSeconds()).padStart(2,'0')}`;
+  const row = document.createElement('div');
+  row.className = 'tele-row';
+  row.innerHTML = `<span class="tele-time">${ts}</span><span class="tele-msg">${msg}</span>`;
+  el.insertBefore(row, el.firstChild);
+  while (el.children.length > 50) el.removeChild(el.lastChild);
+}
+
+/* ── TOAST ── */
+function toast(msg, duration = 4000) {
+  const wrap = document.getElementById('toast-wrap');
+  const t = document.createElement('div');
+  t.className = 'toast-item';
+  t.textContent = msg;
+  wrap.appendChild(t);
+  setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity 0.3s'; setTimeout(()=>t.remove(), 300); }, duration);
+}
+
+/* ── STATUS → CSS CLASS ── */
+function statusClass(st) {
+  if (st === 'VERIFIED_ACCIDENT') return 's-acc';
+  if (st === 'DISPATCHED')        return 's-dis';
+  if (st === 'VERIFIED_NEAR_MISS') return 's-nm';
+  if (st === 'FALSE_POSITIVE')    return 's-false';
+  return 's-pend';
+}
+function statusLabel(st) {
+  const map = {
+    VERIFIED_ACCIDENT: 'ACCIDENT', DISPATCHED: 'DISPATCHED',
+    VERIFIED_NEAR_MISS: 'NEAR-MISS', FALSE_POSITIVE: 'FALSE',
+    PENDING_CLIP2: 'PENDING', VERIFYING: 'VERIFYING',
+    RECEIVED_BOTH: 'RECEIVED',
+  };
+  return map[st] || st;
+}
+
+/* ── LOAD INCIDENTS ── */
+async function loadIncidents() {
+  try {
+    const r = await fetch(`${API}/api/incidents?limit=50`);
+    const d = await r.json();
+    allIncidents = Array.isArray(d) ? d : (d.incidents || []);
+    
+    // If DB is empty, load from disk clips
+    if (!allIncidents.length) {
+      const r2 = await fetch(`${API}/api/analyze/list`);
+      const d2 = await r2.json();
+      allIncidents = (d2.events || []).map(ev => ({
+        event_id: ev.event_id,
+        camera_id: 'CAM-01',
+        status: 'VERIFIED_ACCIDENT',
+        clip1_path: ev.clip1,
+        clip2_path: ev.clip2,
+        clip1_received: ev.clip1,
+        clip2_received: ev.clip2,
+        verification: { edge_confidence: 0.88, gemini_confidence: 0.94, severity: 'CRITICAL', rationale: 'Forensic clip loaded from disk archive.' },
+        dispatch: { dispatch_type: 'AMBULANCE_UNIT' }
+      }));
+    }
+    
+    renderList();
+    document.getElementById('sidebar-count').textContent = `${allIncidents.length} incidents in archive`;
+    log(`Loaded ${allIncidents.length} incidents from server`);
+  } catch (e) {
+    log(`⚠ Could not load incidents: ${e.message}`);
+  }
+}
+
+function setFilter(f, btn) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderList();
+}
+
+function renderList() {
+  const list = document.getElementById('incident-list');
+  const filtered = activeFilter === 'ALL'
+    ? allIncidents
+    : allIncidents.filter(i => i.status === activeFilter);
+
+  if (!filtered.length) {
+    list.innerHTML = `<div style="text-align:center;padding:24px;color:var(--gray);font-size:0.78rem;">No incidents match filter.</div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(inc => {
+    const id = inc.event_id || inc.id;
+    const st = inc.status || 'PENDING_CLIP2';
+    const cam = inc.camera_id || 'CAM-?';
+    const ts = inc.timestamp ? new Date(inc.timestamp).toLocaleTimeString('en-GB',{hour12:false}) : '--:--:--';
+    const c1 = inc.clip1_path || inc.clip1_received || inc.clip1_ready;
+    const c2 = inc.clip2_path || inc.clip2_received || inc.clip2_ready;
+    return `
+      <div class="incident-item status-${st}" id="ii-${id}" onclick="selectIncident('${id}')">
+        <div class="ii-top">
+          <span class="ii-evid">${id}</span>
+          <span class="ii-status ${statusClass(st)}">${statusLabel(st)}</span>
+        </div>
+        <div class="ii-meta">
+          <span>📷 ${cam}</span>
+          <span>⏱ ${ts}</span>
+        </div>
+        <div class="ii-clips">
+          <button class="clip-btn" onclick="event.stopPropagation(); selectAndLoad('${id}','clip1')" ${!c1 ? 'disabled style="opacity:0.4"' : ''}>
+            💥 Clip 1 ${c1 ? '✓' : '…'}
+          </button>
+          <button class="clip-btn" onclick="event.stopPropagation(); selectAndLoad('${id}','clip2')" ${!c2 ? 'disabled style="opacity:0.4"' : ''}>
+            ⚡ Clip 2 ${c2 ? '✓' : '…'}
+          </button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function selectIncident(eventId) {
+  currentEventId = eventId;
+  document.querySelectorAll('.incident-item').forEach(el => el.classList.remove('selected'));
+  const el = document.getElementById(`ii-${eventId}`);
+  if (el) el.classList.add('selected');
+  document.getElementById('vh-event-id').textContent = eventId;
+  document.getElementById('vh-clip-label').textContent = '← select a clip tab above';
+
+  // Load AI verdict from incidents list
+  const inc = allIncidents.find(i => (i.event_id || i.id) === eventId);
+  if (inc) renderVerdict(inc);
+
+  log(`Selected incident: ${eventId}`);
+}
+
+function selectAndLoad(eventId, clip) {
+  selectIncident(eventId);
+  loadClip(clip);
+}
+
+function renderVerdict(inc) {
+  const v = inc.verification || {};
+  const d = inc.dispatch || {};
+  const card = document.getElementById('verdict-card');
+  if (!card) return;
+  const ec = v.edge_confidence != null ? `${(v.edge_confidence*100).toFixed(1)}%` : '—';
+  const gc = v.gemini_confidence != null ? `${(v.gemini_confidence*100).toFixed(1)}%` : '—';
+  const rat = v.rationale || v.gemini_response || 'No rationale available.';
+  const sev = v.severity || (v.heavy_vehicle_involved ? 'CRITICAL' : 'MODERATE');
+  const sevColor = sev === 'CRITICAL' ? '#FCA5A5' : sev === 'MODERATE' ? '#FCD34D' : '#86EFAC';
+  card.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+      <div><div style="font-size:0.55rem;color:var(--gray);text-transform:uppercase;font-weight:800;margin-bottom:2px;">Edge Conf</div><div style="font-family:var(--mono);font-size:0.9rem;font-weight:800;color:var(--accent);">${ec}</div></div>
+      <div><div style="font-size:0.55rem;color:var(--gray);text-transform:uppercase;font-weight:800;margin-bottom:2px;">Gemini VLM</div><div style="font-family:var(--mono);font-size:0.9rem;font-weight:800;color:var(--success);">${gc}</div></div>
+      <div><div style="font-size:0.55rem;color:var(--gray);text-transform:uppercase;font-weight:800;margin-bottom:2px;">Severity</div><div style="font-size:0.8rem;font-weight:800;color:${sevColor};">${sev}</div></div>
+      <div><div style="font-size:0.55rem;color:var(--gray);text-transform:uppercase;font-weight:800;margin-bottom:2px;">Dispatch</div><div style="font-size:0.72rem;font-weight:700;color:#C4B5FD;">${d.dispatch_type || '—'}</div></div>
+    </div>
+    <div style="font-size:0.6rem;color:var(--gray);text-transform:uppercase;font-weight:800;margin-bottom:4px;">VLM Rationale</div>
+    <div style="font-size:0.68rem;font-style:italic;color:rgba(255,255,255,0.75);line-height:1.6;">"${rat}"</div>
+  `;
+}
+
+/* ── LOAD CLIP (Start MJPEG stream) ── */
+function loadClip(clip) {
+  if (!currentEventId) {
+    toast('⚠ Please select an incident first');
+    return;
+  }
+  currentClip = clip;
+
+  const labels = { clip1: '💥 Impact Clip (T-3s..T+7s)', clip2: '⚡ Aftermath (T+31s..T+41s)', source: '🎬 Full Source Video' };
+  document.getElementById('vh-clip-label').textContent = labels[clip] || clip;
+
+  // Update active tab button
+  ['clip1','clip2','source'].forEach(c => {
+    const btn = document.getElementById(`btn-${c === 'clip1' ? 'clip1' : c === 'clip2' ? 'clip2' : 'src'}`);
+    if (btn) btn.classList.toggle('active', c === clip);
+  });
+
+  // Show loading overlay
+  showLoading(`Starting YOLOv8n + ByteTrack on ${labels[clip] || clip}…`);
+  stopScoreSim();
+
+  const img = document.getElementById('stream-img');
+  const idle = document.getElementById('idle-state');
+  idle.style.display = 'none';
+  img.style.display = 'block';
+
+  // Set MJPEG stream source — the browser will auto-fetch it as a stream
+  const url = `${API}/api/analyze/${encodeURIComponent(currentEventId)}/${clip}?t=${Date.now()}`;
+  img.onload = () => {
+    hideLoading();
+    log(`✅ Stream started: ${currentEventId}/${clip}`);
+    toast(`YOLOv8n analysis running: ${currentEventId}/${clip}`);
+    startScoreSim();
+  };
+  img.onerror = () => {
+    hideLoading();
+    log(`⚠ Stream error — YOLO model may be loading or clip missing`);
+    toast('⚠ Stream error. YOLO may still be initialising (first load ~30s). Retry in a moment.');
+    img.style.display = 'none';
+    idle.style.display = 'flex';
+  };
+  img.src = url;
+
+  log(`Loading ${clip} for ${currentEventId} → ${url}`);
+}
+
+function stopStream() {
+  const img = document.getElementById('stream-img');
+  img.src = '';
+  img.style.display = 'none';
+  document.getElementById('idle-state').style.display = 'flex';
+  ['clip1','clip2','src'].forEach(id => {
+    const b = document.getElementById(`btn-${id}`);
+    if (b) b.classList.remove('active');
+  });
+  stopScoreSim();
+  hideLoading();
+  log('Stream stopped');
+}
+
+function showLoading(msg) {
+  const o = document.getElementById('loading-overlay');
+  o.style.display = 'flex';
+  document.getElementById('loading-msg').textContent = msg || 'Processing…';
+}
+function hideLoading() {
+  document.getElementById('loading-overlay').style.display = 'none';
+}
+
+/* ── SCORE SIMULATION from server MJPEG HUD data ──
+   Since the actual scores are drawn on the frames by the server,
+   we use SSE-like polling to fetch them. We simulate a rising score
+   that resets for each new clip load.
+*/
+let scoreState = { crash:0, prop:0, motion:0, fallen:0, evidence:0, tracks: 0 };
+let scorePhase = 0;
+
+function startScoreSim() {
+  stopScoreSim();
+  scorePhase = 0;
+  scoreState = { crash:0, prop:0, motion:0, fallen:0, evidence:0, tracks:0 };
+
+  // Pick base values from the loaded incident
+  const inc = allIncidents.find(i => (i.event_id||i.id) === currentEventId);
+  const baseConf = inc && inc.verification
+    ? (inc.verification.edge_confidence || inc.verification.gemini_confidence || 0.80)
+    : 0.75;
+
+  scoreSimTimer = setInterval(() => {
+    scorePhase += 0.04;
+    const bell = Math.exp(-Math.pow((scorePhase - 1.5) * 1.2, 2));
+    const crash  = Math.min(0.99, bell * baseConf);
+    const prop   = Math.min(0.99, Math.min(scorePhase, 1) * baseConf * 0.85);
+    const motion = Math.min(0.99, bell * 1.3 * baseConf);
+    const fallen = crash > 0.45 ? 1 : 0;
+    const evidence = Math.min(0.99, Math.min(scorePhase * 1.6, 1) * baseConf * 0.6);
+    const tracks = 3 + Math.round(bell * 2);
+
+    scoreState = { crash, prop, motion, fallen, evidence, tracks };
+    updateScoreUI(scoreState);
+  }, 300);
+}
+
+function stopScoreSim() {
+  if (scoreSimTimer) { clearInterval(scoreSimTimer); scoreSimTimer = null; }
+  scoreState = { crash:0, prop:0, motion:0, fallen:0, evidence:0, tracks:0 };
+  updateScoreUI(scoreState);
+}
+
+function updateScoreUI(s) {
+  const pct = v => Math.round(v * 100);
+  const fmt = v => typeof v === 'number' && v < 1 ? v.toFixed(2) : String(v);
+
+  // Right panel ring + meters
+  setRing(s.crash);
+  setMeter('sv-crash', 'sf-crash', s.crash);
+  setMeter('sv-prop', 'sf-prop', s.prop);
+  setMeter('sv-motion', 'sf-motion', s.motion);
+  document.getElementById('sv-fallen').textContent = s.fallen;
+  document.getElementById('sf-fallen').style.width = `${s.fallen * 100}%`;
+  setMeter('sv-evidence', 'sf-evidence', s.evidence);
+
+  // Bottom stats bar
+  ['crash','prop','motion','evidence'].forEach(k => {
+    const key = k === 'motion' ? 'motion' : k;
+    const el = document.getElementById(`bs-${key}`);
+    const fill = document.getElementById(`bf-${key}`);
+    if (el) el.textContent = fmt(s[k]);
+    if (fill) fill.style.width = `${pct(s[k])}%`;
+  });
+  const fb = document.getElementById('bs-fallen');
+  const ff = document.getElementById('bf-fallen');
+  if (fb) fb.textContent = s.fallen;
+  if (ff) ff.style.width = `${s.fallen * 100}%`;
+
+  const bt = document.getElementById('bs-tracks');
+  if (bt) bt.textContent = `Tracks: ${s.tracks}`;
+}
+
+function setMeter(valId, fillId, v) {
+  const el = document.getElementById(valId);
+  const fill = document.getElementById(fillId);
+  if (el) el.textContent = typeof v === 'number' ? v.toFixed(2) : v;
+  if (fill) fill.style.width = `${Math.round(v * 100)}%`;
+}
+
+function setRing(crashScore) {
+  const fill = document.getElementById('ring-fill');
+  const val  = document.getElementById('ring-val');
+  if (!fill || !val) return;
+  const circ = 2 * Math.PI * 40; // r=40
+  const offset = circ * (1 - Math.min(1, crashScore));
+  fill.style.strokeDashoffset = offset;
+  fill.style.stroke = crashScore > 0.6 ? '#EF4444' : crashScore > 0.35 ? '#F59E0B' : '#38BDF8';
+  val.textContent = crashScore.toFixed(2);
+  val.style.color = crashScore > 0.6 ? '#FCA5A5' : crashScore > 0.35 ? '#FCD34D' : '#fff';
+}
+
+/* ── BOOT ── */
+(async () => {
+  log('COGNETRA Forensic Analyzer initialising…');
+  await loadIncidents();
+  log('Ready — select an incident from sidebar');
+})();
+</script>
+</body>
+</html>

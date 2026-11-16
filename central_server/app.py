@@ -25,6 +25,7 @@ from models.database import init_db
 from api.upload import router as upload_router
 from api.events import router as events_router
 from api.dashboard import router as dashboard_router
+from api.analyzer import router as analyzer_router
 
 # ── Logging Setup ─────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -91,6 +92,7 @@ async def health():
 app.include_router(upload_router, prefix="/api", tags=["Upload"])
 app.include_router(events_router, prefix="/api", tags=["SSE"])
 app.include_router(dashboard_router, prefix="/api", tags=["Dashboard"])
+app.include_router(analyzer_router, prefix="/api", tags=["Analyzer"])
 
 # ── Static Dashboard ──────────────────────────────────────────────────────────
 dashboard_path = Path(settings.DASHBOARD_DIR)
@@ -112,6 +114,13 @@ if dashboard_path.exists():
             headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
         )
 
+    @app.get("/analyzer", response_class=FileResponse)
+    async def serve_analyzer_dashboard():
+        return FileResponse(
+            str(dashboard_path / "analyzer.html"),
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
+        )
+
 else:
     @app.get("/")
     async def dashboard_placeholder():
@@ -120,6 +129,10 @@ else:
     @app.get("/monitor")
     async def monitor_placeholder():
         return JSONResponse({"message": "Monitor not found. Place monitor.html in /dashboard/"})
+
+    @app.get("/analyzer")
+    async def analyzer_placeholder():
+        return JSONResponse({"message": "Analyzer not found. Place analyzer.html in /dashboard/"})
 
 
 # ── Clips & Source Videos serving ──────────────────────────────────────────────
