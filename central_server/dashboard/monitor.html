@@ -1588,6 +1588,8 @@ let confidences   = [];
 let pieData       = { accident:0, nearmiss:0, dispatched:0, false_alarm:0 };
 let reconnectTimer = null;
 let cardIdSet     = new Set();
+window._incidentCache = window._incidentCache || {};
+window._incidentList = window._incidentList || [];
 
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
@@ -2156,6 +2158,8 @@ function showToast(icon, message, duration = 4000) {
 /* ─── LOAD INCIDENTS ─── */
 async function loadIncidents() {
   try {
+    if (!window._incidentCache) window._incidentCache = {};
+    if (!window._incidentList) window._incidentList = [];
     const res = await fetch(`${API_BASE}/api/incidents?limit=20`);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();

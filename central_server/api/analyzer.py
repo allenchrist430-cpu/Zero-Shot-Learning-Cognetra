@@ -381,6 +381,8 @@ def _stream_frames(video_path: str) -> Generator[bytes, None, None]:
     scorer     = LSTMCrashScorer(decay=0.72)
     frame_idx  = 0
     scores     = {'crash': 0.0, 'prop': 0.0, 'motion_burst': 0.0, 'fallen': 0.0, 'evidence': 0.0}
+    SKIP_FRAMES = 2  # Process YOLO every Nth frame for performance
+    last_active_tracks = []
 
     while cap.isOpened():
         ret, frame = cap.read()
@@ -388,9 +390,16 @@ def _stream_frames(video_path: str) -> Generator[bytes, None, None]:
             break
         frame_idx += 1
 
-        detections = []
+        # Resize large frames for faster YOLO inference
+        H_orig, W_orig = frame.shape[:2]
+        if W_orig > 720:
+            scale = 720.0 / W_orig
+            frame = cv2.resize(frame, (720, int(H_orig * scale)))
 
-        if model is not None:
+        detections = []
+        run_yolo_this_frame = (frame_idx % SKIP_FRAMES == 0)
+
+        if model is not None and run_yolo_this_frame:
             try:
                 # Use YOLO track() for built-in ByteTrack if ultralytics has tracker support
                 results = model.track(
@@ -419,12 +428,10 @@ def _stream_frames(video_path: str) -> Generator[bytes, None, None]:
                         trail = deque([(int((x1+x2)/2), int((y1+y2)/2))], maxlen=25)
                         active_tracks.append((x1, y1, x2, y2, tid, label, float(conf), trail))
 
-                    scores = scorer.update([
-                        (x1, y1, x2, y2, label, conf, None, None)[:6]
-                        for x1, y1, x2, y2, tid, label, conf, trail in active_tracks
-                    ])
+                    scores = scorer.update(active_tracks)
 
                     lstm_val = scores['crash'] * 0.6 + scores['motion_burst'] * 0.4
+                    last_active_tracks = active_tracks
                     frame    = _annotate_frame(frame, active_tracks, scores, lstm_val, frame_idx, fps)
 
             except Exception as e:
@@ -444,18 +451,22 @@ def _stream_frames(video_path: str) -> Generator[bytes, None, None]:
                             detections.append((x1, y1, x2, y2, label, float(conf)))
 
                         active_tracks = tracker.update(detections)
-                        scored_input  = [(x1, y1, x2, y2, lbl, conf) for x1, y1, x2, y2, tid, lbl, conf, trail in active_tracks]
-                        scores        = scorer.update(scored_input)
+                        scores        = scorer.update(active_tracks)
                         lstm_val      = scores['crash'] * 0.6 + scores['motion_burst'] * 0.4
+                        last_active_tracks = active_tracks
                         frame         = _annotate_frame(frame, active_tracks, scores, lstm_val, frame_idx, fps)
                 except Exception as e2:
                     logger.warning(f"YOLO predict also failed: {e2}")
+        elif model is not None and not run_yolo_this_frame:
+            # Skip frame: re-use last tracks and scores for annotation
+            lstm_val = scores['crash'] * 0.6 + scores['motion_burst'] * 0.4
+            frame = _annotate_frame(frame, last_active_tracks, scores, lstm_val, frame_idx, fps)
         else:
             # No model — write "YOLO unavailable" message on frame
             cv2.putText(frame, "YOLOv8 not loaded", (10, 30), FONT, 0.7, (0, 0, 200), 2)
 
-        # Encode frame as JPEG
-        ok, buf = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 82])
+        # Encode frame as JPEG (quality 70 for faster streaming on CPU)
+        ok, buf = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
         if ok:
             yield (
                 b'--cognetraframe\r\n'
@@ -512,14 +523,35 @@ async def stream_analyzed_clip(event_id: str, clip: str):
     if clip in ("clip1", "clip2"):
         video_path = clips_dir / event_id / f"{clip}.mp4"
     elif clip == "source":
-        # Look for source video in edge_client/videos
+        # Look up the correct source video from DB by event_id
         source_dir = Path(settings.BASE_DIR).parent / "edge_client" / "videos"
-        # Find by event ID prefix matching (best effort)
         video_path = None
-        if source_dir.exists():
+
+        # Try reading source_video from database
+        try:
+            import sqlite3
+            db_path = Path(settings.BASE_DIR) / "data" / "cognetra.db"
+            conn = sqlite3.connect(str(db_path))
+            cursor = conn.cursor()
+            cursor.execute("SELECT source_video FROM incidents WHERE event_id = ?", (event_id,))
+            row = cursor.fetchone()
+            conn.close()
+            if row and row[0]:
+                candidate = source_dir / row[0]
+                if candidate.exists():
+                    video_path = candidate
+                    logger.info(f"[{event_id}] Source video from DB: {video_path.name}")
+        except Exception as e:
+            logger.warning(f"[{event_id}] DB lookup for source_video failed: {e}")
+
+        # Fallback: try to find by matching source_video filename in clips metadata
+        if video_path is None and source_dir.exists():
             for f in source_dir.glob("*.mp4"):
                 video_path = f
-                break  # use first available as demo
+                break  # last resort fallback
+            if video_path:
+                logger.info(f"[{event_id}] Source video fallback: {video_path.name}")
+
         if video_path is None:
             raise HTTPException(status_code=404, detail="Source video not found")
     else:

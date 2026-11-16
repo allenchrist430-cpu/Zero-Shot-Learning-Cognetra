@@ -35,6 +35,7 @@ class TelegramService:
     def __init__(self):
         self._bot: Optional[object] = None
         self._configured = False
+        self._dispatch_lock = asyncio.Lock()
 
         if not TELEGRAM_AVAILABLE:
             logger.warning("python-telegram-bot not installed — Telegram disabled")
@@ -85,26 +86,30 @@ class TelegramService:
             return None
 
         try:
-            # Route to near miss ONLY if it was explicitly verified as near miss with no collision
-            if is_near_miss and not is_fail_open:
-                return await self._send_near_miss_alert(
-                    event_id=event_id, severity=severity, confidence=confidence,
-                    rationale=rationale, clip1_path=clip1_path,
-                    is_predictive=is_predictive, camera_id=camera_id,
-                    source_video=source_video,
-                    vehicles_involved=vehicles_involved,
-                    heavy_vehicle_involved=heavy_vehicle_involved,
-                )
-            else:
-                return await self._send_accident_alert(
-                    event_id=event_id, severity=severity, collision_type=collision_type,
-                    confidence=confidence, rationale=rationale, clip1_path=clip1_path,
-                    is_fail_open=is_fail_open, camera_id=camera_id,
-                    source_video=source_video,
-                    vehicles_involved=vehicles_involved,
-                    heavy_vehicle_involved=heavy_vehicle_involved,
-                    entrapment_risk=entrapment_risk,
-                )
+            async with self._dispatch_lock:
+                # Route to near miss ONLY if it was explicitly verified as near miss with no collision
+                if is_near_miss and not is_fail_open:
+                    res = await self._send_near_miss_alert(
+                        event_id=event_id, severity=severity, confidence=confidence,
+                        rationale=rationale, clip1_path=clip1_path,
+                        is_predictive=is_predictive, camera_id=camera_id,
+                        source_video=source_video,
+                        vehicles_involved=vehicles_involved,
+                        heavy_vehicle_involved=heavy_vehicle_involved,
+                    )
+                else:
+                    res = await self._send_accident_alert(
+                        event_id=event_id, severity=severity, collision_type=collision_type,
+                        confidence=confidence, rationale=rationale, clip1_path=clip1_path,
+                        is_fail_open=is_fail_open, camera_id=camera_id,
+                        source_video=source_video,
+                        vehicles_involved=vehicles_involved,
+                        heavy_vehicle_involved=heavy_vehicle_involved,
+                        entrapment_risk=entrapment_risk,
+                    )
+                # Small pause to guarantee delivery order at Telegram servers
+                await asyncio.sleep(0.5)
+                return res
         except Exception as e:
             logger.error(f"[{event_id}] Telegram dispatch failed: {e}")
             return None
@@ -170,9 +175,10 @@ class TelegramService:
             reply_markup=keyboard,
         )
 
-        # Try to attach Clip 1 video
+        # Immediately attach Clip 1 video linked to this alert message
         if clip1_path and Path(clip1_path).exists():
-            await self._send_video_clip(clip1_path, event_id, "Impact Evidence (Clip 1)")
+            reply_id = sent_msg.message_id if sent_msg else None
+            await self._send_video_clip(clip1_path, event_id, "Impact Evidence (Clip 1)", reply_to_message_id=reply_id)
 
         return str(sent_msg.message_id) if sent_msg else None
 
@@ -224,7 +230,8 @@ class TelegramService:
         )
 
         if clip1_path and Path(clip1_path).exists():
-            await self._send_video_clip(clip1_path, event_id, "Near-Miss Evidence (Clip 1)")
+            reply_id = sent_msg.message_id if sent_msg else None
+            await self._send_video_clip(clip1_path, event_id, "Near-Miss Evidence (Clip 1)", reply_to_message_id=reply_id)
 
         return str(sent_msg.message_id) if sent_msg else None
 
@@ -263,7 +270,7 @@ class TelegramService:
                     logger.error(f"Telegram send failed after {max_retries} attempts: {e}")
         return None
 
-    async def _send_video_clip(self, clip_path: str, event_id: str, caption: str):
+    async def _send_video_clip(self, clip_path: str, event_id: str, caption: str, reply_to_message_id: Optional[int] = None):
         """Attempt to send a video clip to Telegram (non-critical — failures logged only)."""
         try:
             with open(clip_path, "rb") as f:
@@ -271,12 +278,13 @@ class TelegramService:
                     chat_id=int(settings.TELEGRAM_CHAT_ID),
                     video=f,
                     caption=f"📹 {caption}\nEvent: {event_id}",
+                    reply_to_message_id=reply_to_message_id,
                     parse_mode=None,
                     read_timeout=60,
                     write_timeout=60,
                     connect_timeout=30,
                 )
-                logger.info(f"[{event_id}] Video clip sent to Telegram ✓")
+                logger.info(f"[{event_id}] Video clip sent to Telegram ✓ (reply_to={reply_to_message_id})")
         except Exception as e:
             logger.warning(f"[{event_id}] Could not send video clip to Telegram: {e}")
 
